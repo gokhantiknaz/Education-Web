@@ -55,6 +55,13 @@ export interface Course {
   averageRating: number;
   createdAt: string;
   updatedAt?: string;
+  applications?: CourseApplication[];
+}
+
+export interface CourseApplication {
+  id: string;
+  appId: string;
+  name: string;
 }
 
 export interface CreateCourseRequest {
@@ -72,6 +79,7 @@ export interface CreateCourseRequest {
   level: string;
   language: string;
   isFeatured?: boolean;
+  applicationIds?: string[];
 }
 
 // Category types
@@ -174,4 +182,105 @@ export interface AssignCourseRequest {
   courseId: string;
   displayOrder?: number;
   isDefault?: boolean;
+}
+
+// Quiz types
+export interface Quiz {
+  id: string;
+  courseId: string;
+  courseName: string;
+  title: string;
+  description?: string;
+  passingScore: number;
+  timeLimit?: number;
+  maxAttempts: number;
+  isActive: boolean;
+  isPublished: boolean;
+  questionCount: number;
+  attemptCount: number;
+  createdAt: string;
+  updatedAt: string;
+  questions?: QuizQuestion[];
+}
+
+export interface QuizQuestion {
+  id: string;
+  quizId: string;
+  questionText: string;
+  questionType: 'SingleChoice' | 'MultipleChoice' | 'FillInBlank';
+  points: number;
+  displayOrder: number;
+  correctAnswer?: string;
+  explanation?: string;
+  imageUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+  options: QuizOption[];
+}
+
+export interface QuizOption {
+  id: string;
+  questionId: string;
+  optionText: string;
+  isCorrect: boolean;
+  displayOrder: number;
+}
+
+export interface CreateQuizRequest {
+  courseId: string;
+  title: string;
+  description?: string;
+  passingScore?: number;
+  timeLimit?: number;
+  maxAttempts?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateQuizRequest {
+  title: string;
+  description?: string;
+  passingScore?: number;
+  timeLimit?: number;
+  maxAttempts?: number;
+  isActive?: boolean;
+}
+
+export interface CreateQuestionRequest {
+  quizId: string;
+  questionText: string;
+  questionType: string;
+  points?: number;
+  displayOrder?: number;
+  correctAnswer?: string;
+  explanation?: string;
+  imageUrl?: string;
+  options: CreateOptionRequest[];
+}
+
+export interface UpdateQuestionRequest {
+  questionText: string;
+  questionType: string;
+  points?: number;
+  displayOrder?: number;
+  correctAnswer?: string;
+  explanation?: string;
+  imageUrl?: string;
+  options: CreateOptionRequest[];
+}
+
+export interface CreateOptionRequest {
+  optionText: string;
+  isCorrect?: boolean;
+  displayOrder?: number;
+}
+
+export interface QuizStats {
+  quizId: string;
+  quizTitle: string;
+  totalAttempts: number;
+  passedAttempts: number;
+  failedAttempts: number;
+  averageScore: number;
+  passRate: number;
+  averageTimeSeconds: number;
 }

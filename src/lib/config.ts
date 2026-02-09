@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
   // Auth (Web)
   LOGIN: '/web/auth/login',
   REFRESH_TOKEN: '/web/auth/refresh-token',
+  CURRENT_USER: '/web/auth/me',
 
   // Users
   USERS: '/web/users',
@@ -33,4 +34,14 @@ export const API_ENDPOINTS = {
   APPLICATION_DETAIL: (id: string) => `/web/applications/${id}`,
   APPLICATION_COURSES: (id: string) => `/web/applications/${id}/courses`,
   APPLICATION_COURSE: (appId: string, courseId: string) => `/web/applications/${appId}/courses/${courseId}`,
+
+  // Quizzes
+  QUIZZES: '/web/quizzes',
+  QUIZ_DETAIL: (id: string) => `/web/quizzes/${id}`,
+  QUIZ_PUBLISH: (id: string) => `/web/quizzes/${id}/publish`,
+  QUIZ_UNPUBLISH: (id: string) => `/web/quizzes/${id}/unpublish`,
+  QUIZ_STATS: (id: string) => `/web/quizzes/${id}/stats`,
+  QUIZ_QUESTIONS_REORDER: (id: string) => `/web/quizzes/${id}/questions/reorder`,
+  QUIZ_QUESTIONS: '/web/quizzes/questions',
+  QUIZ_QUESTION_DETAIL: (id: string) => `/web/quizzes/questions/${id}`,
 };

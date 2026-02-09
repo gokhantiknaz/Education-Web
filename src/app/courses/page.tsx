@@ -14,10 +14,11 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
+import { MultiSelect } from 'primereact/multiselect';
 import api, { ApiResponse } from '@/lib/api';
-import { Course, Category } from '@/types';
+import { Course, Category, Application } from '@/types';
 
-const emptyCourse: Partial<Course> = {
+const emptyCourse: Partial<Course> & { applicationIds?: string[] } = {
   title: '',
   shortDescription: '',
   fullDescription: '',
@@ -27,15 +28,17 @@ const emptyCourse: Partial<Course> = {
   level: 'Beginner',
   language: 'tr',
   isFeatured: false,
+  applicationIds: [],
 };
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalRecords, setTotalRecords] = useState(0);
   const [courseDialog, setCourseDialog] = useState(false);
-  const [course, setCourse] = useState<Partial<Course>>(emptyCourse);
+  const [course, setCourse] = useState<Partial<Course> & { applicationIds?: string[] }>(emptyCourse);
   const [submitted, setSubmitted] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const toast = useRef<Toast>(null);
@@ -55,16 +58,17 @@ export default function CoursesPage() {
   useEffect(() => {
     loadCourses();
     loadCategories();
+    loadApplications();
   }, [lazyState]);
 
   const loadCourses = async () => {
     setLoading(true);
     try {
-      const response = await api.get<ApiResponse<{ items: Course[]; totalCount: number }>>(
+      const response = await api.get<ApiResponse<{ items: Course[]; pagination: { totalItems: number } }>>(
         `/web/courses?pageNumber=${lazyState.page}&pageSize=${lazyState.rows}`
       );
       setCourses(response.data.data.items || []);
-      setTotalRecords(response.data.data.totalCount || 0);
+      setTotalRecords(response.data.data.pagination?.totalItems || 0);
     } catch (error) {
       console.error('Courses load error:', error);
       toast.current?.show({
@@ -86,6 +90,15 @@ export default function CoursesPage() {
     }
   };
 
+  const loadApplications = async () => {
+    try {
+      const response = await api.get<ApiResponse<{ items: Application[] }>>('/web/applications?pageSize=100');
+      setApplications(response.data.data.items || []);
+    } catch (error) {
+      console.error('Applications load error:', error);
+    }
+  };
+
   const onPage = (event: { first: number; rows: number; page?: number }) => {
     setLazyState({
       ...lazyState,
@@ -102,8 +115,10 @@ export default function CoursesPage() {
     setCourseDialog(true);
   };
 
-  const editCourse = (course: Course) => {
-    setCourse({ ...course });
+  const editCourse = (courseData: Course) => {
+    // Extract applicationIds from course.applications
+    const applicationIds = courseData.applications?.map(app => app.id) || [];
+    setCourse({ ...courseData, applicationIds });
     setIsEditMode(true);
     setCourseDialog(true);
   };
@@ -121,15 +136,20 @@ export default function CoursesPage() {
     }
 
     try {
+      const payload = {
+        ...course,
+        applicationIds: course.applicationIds || [],
+      };
+
       if (isEditMode && course.id) {
-        await api.put(`/web/courses/${course.id}`, course);
+        await api.put(`/web/courses/${course.id}`, payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Success',
           detail: 'Course updated successfully',
         });
       } else {
-        await api.post('/web/courses', course);
+        await api.post('/web/courses', payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Success',
@@ -220,6 +240,19 @@ export default function CoursesPage() {
     return rowData.level;
   };
 
+  const applicationsBodyTemplate = (rowData: Course) => {
+    if (!rowData.applications || rowData.applications.length === 0) {
+      return <span className="text-color-secondary">-</span>;
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {rowData.applications.map((app) => (
+          <Tag key={app.id} value={app.name} severity="info" />
+        ))}
+      </div>
+    );
+  };
+
   const actionsBodyTemplate = (rowData: Course) => {
     return (
       <div className="flex gap-2">
@@ -284,6 +317,7 @@ export default function CoursesPage() {
           <Column field="instructorName" header="Instructor" sortable />
           <Column field="level" header="Level" body={levelBodyTemplate} sortable />
           <Column field="price" header="Price" body={priceBodyTemplate} sortable />
+          <Column header="Applications" body={applicationsBodyTemplate} style={{ minWidth: '150px' }} />
           <Column field="enrollmentCount" header="Enrollments" sortable />
           <Column field="isPublished" header="Status" body={statusBodyTemplate} sortable />
           <Column body={actionsBodyTemplate} header="Actions" style={{ width: '12rem' }} />
@@ -326,6 +360,25 @@ export default function CoursesPage() {
               placeholder="Select a category"
               className={submitted && !course.categoryId ? 'p-invalid' : ''}
             />
+          </div>
+
+          <div className="field mb-4">
+            <label htmlFor="applications" className="font-bold">Applications</label>
+            <MultiSelect
+              id="applications"
+              value={course.applicationIds}
+              options={applications}
+              onChange={(e) => setCourse({ ...course, applicationIds: e.value })}
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select applications"
+              display="chip"
+              filter
+              showClear
+            />
+            <small className="text-color-secondary">
+              Select which applications this course should be available in
+            </small>
           </div>
 
           <div className="field mb-4">

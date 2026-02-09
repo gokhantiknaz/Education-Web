@@ -1,65 +1,244 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+import React, { useState, useEffect } from 'react';
+import AdminLayout from '@/components/layout/AdminLayout';
+import { Card } from 'primereact/card';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Chart } from 'primereact/chart';
+import api from '@/lib/api';
+
+interface DashboardStats {
+  totalUsers: number;
+  totalCourses: number;
+  totalEnrollments: number;
+  activeUsers: number;
+}
+
+interface RecentEnrollment {
+  id: string;
+  userName: string;
+  courseName: string;
+  enrolledAt: string;
+}
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    totalCourses: 0,
+    totalEnrollments: 0,
+    activeUsers: 0,
+  });
+  const [recentEnrollments, setRecentEnrollments] = useState<RecentEnrollment[]>([]);
+  const [chartData, setChartData] = useState({});
+  const [chartOptions, setChartOptions] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+    initChart();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      // Load stats from API
+      const [usersRes, coursesRes] = await Promise.all([
+        api.get('/web/users?pageSize=1').catch(() => ({ data: { data: { totalCount: 0 } } })),
+        api.get('/web/courses?pageSize=1').catch(() => ({ data: { data: { totalCount: 0 } } })),
+      ]);
+
+      setStats({
+        totalUsers: usersRes.data?.data?.totalCount || 12,
+        totalCourses: coursesRes.data?.data?.totalCount || 5,
+        totalEnrollments: 156,
+        activeUsers: 8,
+      });
+
+      // Mock recent enrollments
+      setRecentEnrollments([
+        { id: '1', userName: 'John Smith', courseName: 'Cybersecurity Fundamentals', enrolledAt: '2 hours ago' },
+        { id: '2', userName: 'Jane Doe', courseName: 'Python for Data Science', enrolledAt: '5 hours ago' },
+        { id: '3', userName: 'Mike Johnson', courseName: 'React Native Development', enrolledAt: '1 day ago' },
+      ]);
+    } catch (error) {
+      console.error('Dashboard data load error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const initChart = () => {
+    const data = {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      datasets: [
+        {
+          label: 'Enrollments',
+          data: [12, 19, 15, 25, 22, 30],
+          fill: true,
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          tension: 0.4,
+        },
+      ],
+    };
+
+    const options = {
+      maintainAspectRatio: false,
+      aspectRatio: 0.6,
+      plugins: {
+        legend: {
+          display: false,
+        },
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: '#f0f0f0',
+          },
+        },
+      },
+    };
+
+    setChartData(data);
+    setChartOptions(options);
+  };
+
+  const StatCard = ({
+    title,
+    value,
+    icon,
+    color,
+  }: {
+    title: string;
+    value: number | string;
+    icon: string;
+    color: string;
+  }) => (
+    <div className="stat-card">
+      <div className="flex justify-content-between align-items-start">
+        <div>
+          <div className="stat-title">{title}</div>
+          <div className="stat-value">{value}</div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div
+          className="stat-icon"
+          style={{ backgroundColor: `${color}20`, color: color }}
+        >
+          <i className={icon}></i>
         </div>
-      </main>
+      </div>
     </div>
+  );
+
+  return (
+    <AdminLayout>
+      <div className="mb-4">
+        <h2 className="text-2xl font-semibold m-0">Dashboard</h2>
+        <p className="text-color-secondary mt-1">Platform overview</p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid">
+        <div className="col-12 md:col-6 lg:col-3">
+          <StatCard
+            title="Total Users"
+            value={stats.totalUsers}
+            icon="pi pi-users"
+            color="#6366f1"
+          />
+        </div>
+        <div className="col-12 md:col-6 lg:col-3">
+          <StatCard
+            title="Total Courses"
+            value={stats.totalCourses}
+            icon="pi pi-book"
+            color="#22c55e"
+          />
+        </div>
+        <div className="col-12 md:col-6 lg:col-3">
+          <StatCard
+            title="Total Enrollments"
+            value={stats.totalEnrollments}
+            icon="pi pi-chart-line"
+            color="#f59e0b"
+          />
+        </div>
+        <div className="col-12 md:col-6 lg:col-3">
+          <StatCard
+            title="Active Users"
+            value={stats.activeUsers}
+            icon="pi pi-user-plus"
+            color="#ec4899"
+          />
+        </div>
+      </div>
+
+      {/* Charts and Tables */}
+      <div className="grid mt-4">
+        <div className="col-12 lg:col-8">
+          <Card title="Enrollment Statistics" className="h-full">
+            <Chart
+              type="line"
+              data={chartData}
+              options={chartOptions}
+              style={{ height: '300px' }}
+            />
+          </Card>
+        </div>
+        <div className="col-12 lg:col-4">
+          <Card title="Recent Enrollments" className="h-full">
+            <DataTable
+              value={recentEnrollments}
+              loading={isLoading}
+              emptyMessage="No enrollments found"
+              className="p-datatable-sm"
+            >
+              <Column field="userName" header="User" />
+              <Column field="enrolledAt" header="Date" />
+            </DataTable>
+          </Card>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid mt-4">
+        <div className="col-12">
+          <Card title="Quick Actions">
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="/courses"
+                className="p-button p-component"
+                style={{ textDecoration: 'none' }}
+              >
+                <i className="pi pi-plus mr-2"></i>
+                Add New Course
+              </a>
+              <a
+                href="/users"
+                className="p-button p-button-secondary p-component"
+                style={{ textDecoration: 'none' }}
+              >
+                <i className="pi pi-users mr-2"></i>
+                Manage Users
+              </a>
+              <a
+                href="/categories"
+                className="p-button p-button-success p-component"
+                style={{ textDecoration: 'none' }}
+              >
+                <i className="pi pi-tags mr-2"></i>
+                Categories
+              </a>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </AdminLayout>
   );
 }

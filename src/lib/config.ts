@@ -44,4 +44,13 @@ export const API_ENDPOINTS = {
   QUIZ_QUESTIONS_REORDER: (id: string) => `/web/quizzes/${id}/questions/reorder`,
   QUIZ_QUESTIONS: '/web/quizzes/questions',
   QUIZ_QUESTION_DETAIL: (id: string) => `/web/quizzes/questions/${id}`,
+
+  // Lessons
+  LESSONS: '/web/lessons',
+  LESSON_DETAIL: (id: string) => `/web/lessons/${id}`,
+  LESSON_PUBLISH: (id: string) => `/web/lessons/${id}/publish`,
+  LESSON_UNPUBLISH: (id: string) => `/web/lessons/${id}/unpublish`,
+  LESSONS_BY_SECTION: (sectionId: string) => `/web/lessons/section/${sectionId}`,
+  LESSONS_REORDER: (sectionId: string) => `/web/lessons/section/${sectionId}/reorder`,
+  LESSONS_BULK_UPDATE: '/web/lessons/bulk-update',
 };

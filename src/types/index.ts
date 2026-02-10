@@ -284,3 +284,62 @@ export interface QuizStats {
   passRate: number;
   averageTimeSeconds: number;
 }
+
+// Lesson types
+export interface Lesson {
+  id: string;
+  title: string;
+  description?: string;
+  durationSeconds?: number;
+  isFree: boolean;
+  displayOrder: number;
+  isPublished: boolean;
+  videoUrl?: string;
+  videoId?: string;
+  sectionId: string;
+  sectionTitle: string;
+  courseId: string;
+  courseTitle: string;
+  createdAt: string;
+  updatedAt: string;
+  completionCount?: number;
+  averageWatchPercentage?: number;
+}
+
+export interface CourseSection {
+  id: string;
+  courseId: string;
+  title: string;
+  description?: string;
+  displayOrder: number;
+  lessons?: Lesson[];
+}
+
+export interface CreateLessonRequest {
+  sectionId: string;
+  title: string;
+  description?: string;
+  videoUrl?: string;
+  videoId?: string;
+  durationSeconds?: number;
+  isFree?: boolean;
+  displayOrder?: number;
+  isPublished?: boolean;
+}
+
+export interface UpdateLessonRequest {
+  title?: string;
+  description?: string;
+  videoUrl?: string;
+  videoId?: string;
+  durationSeconds?: number;
+  isFree?: boolean;
+  displayOrder?: number;
+  isPublished?: boolean;
+}
+
+export interface BulkUpdateLessonsRequest {
+  lessonIds: string[];
+  isPublished?: boolean;
+  isFree?: boolean;
+}

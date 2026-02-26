@@ -13,7 +13,7 @@ import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { FilterMatchMode } from 'primereact/api';
 import api, { ApiResponse } from '@/lib/api';
-import { User } from '@/types';
+import { User, CreateUserRequest } from '@/types';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -22,6 +22,16 @@ export default function UsersPage() {
   const [globalFilterValue, setGlobalFilterValue] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userDialog, setUserDialog] = useState(false);
+  const [createDialog, setCreateDialog] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newUser, setNewUser] = useState<CreateUserRequest>({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    phoneNumber: '',
+    role: 'Student',
+  });
   const toast = useRef<Toast>(null);
 
   const [lazyState, setLazyState] = useState({
@@ -105,6 +115,65 @@ export default function UsersPage() {
     }
   };
 
+  const roleOptions = [
+    { label: 'Öğrenci', value: 'Student' },
+    { label: 'Yönetici', value: 'Admin' },
+    { label: 'İçerik Yöneticisi', value: 'ContentManager' },
+  ];
+
+  const openCreateDialog = () => {
+    setNewUser({
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      phoneNumber: '',
+      role: 'Student',
+    });
+    setCreateDialog(true);
+  };
+
+  const createUser = async () => {
+    if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.password) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Uyarı',
+        detail: 'Lütfen zorunlu alanları doldurun',
+      });
+      return;
+    }
+
+    if (newUser.password.length < 8) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Uyarı',
+        detail: 'Şifre en az 8 karakter olmalıdır',
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post('/web/users', newUser);
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Başarılı',
+        detail: 'Kullanıcı başarıyla oluşturuldu',
+      });
+      setCreateDialog(false);
+      loadUsers();
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Kullanıcı oluşturulamadı';
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Hata',
+        detail: message,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const roleBodyTemplate = (rowData: User) => {
     const roleColors: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
       Admin: 'danger',
@@ -147,15 +216,23 @@ export default function UsersPage() {
 
   const header = (
     <div className="flex justify-content-between align-items-center">
-      <h5 className="m-0">Users</h5>
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          value={globalFilterValue}
-          onChange={onGlobalFilterChange}
-          placeholder="Search..."
+      <h5 className="m-0">Kullanıcılar</h5>
+      <div className="flex gap-2 align-items-center">
+        <span className="p-input-icon-left">
+          <i className="pi pi-search" />
+          <InputText
+            value={globalFilterValue}
+            onChange={onGlobalFilterChange}
+            placeholder="Ara..."
+          />
+        </span>
+        <Button
+          label="Yeni Kullanıcı"
+          icon="pi pi-plus"
+          className="p-button-success"
+          onClick={openCreateDialog}
         />
-      </span>
+      </div>
     </div>
   );
 
@@ -241,6 +318,90 @@ export default function UsersPage() {
             </div>
           </div>
         )}
+      </Dialog>
+      {/* Create User Dialog */}
+      <Dialog
+        visible={createDialog}
+        style={{ width: '500px' }}
+        header="Yeni Kullanıcı Oluştur"
+        modal
+        onHide={() => setCreateDialog(false)}
+        footer={
+          <div>
+            <Button
+              label="İptal"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setCreateDialog(false)}
+            />
+            <Button
+              label="Kaydet"
+              icon="pi pi-check"
+              onClick={createUser}
+              loading={saving}
+            />
+          </div>
+        }
+      >
+        <div className="p-fluid">
+          <div className="field mb-3">
+            <label htmlFor="firstName" className="font-bold">Ad *</label>
+            <InputText
+              id="firstName"
+              value={newUser.firstName}
+              onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+              placeholder="Ad"
+            />
+          </div>
+          <div className="field mb-3">
+            <label htmlFor="lastName" className="font-bold">Soyad *</label>
+            <InputText
+              id="lastName"
+              value={newUser.lastName}
+              onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+              placeholder="Soyad"
+            />
+          </div>
+          <div className="field mb-3">
+            <label htmlFor="email" className="font-bold">E-posta *</label>
+            <InputText
+              id="email"
+              type="email"
+              value={newUser.email}
+              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+              placeholder="ornek@email.com"
+            />
+          </div>
+          <div className="field mb-3">
+            <label htmlFor="password" className="font-bold">Şifre *</label>
+            <InputText
+              id="password"
+              type="password"
+              value={newUser.password}
+              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+              placeholder="En az 8 karakter"
+            />
+          </div>
+          <div className="field mb-3">
+            <label htmlFor="phoneNumber" className="font-bold">Telefon</label>
+            <InputText
+              id="phoneNumber"
+              value={newUser.phoneNumber || ''}
+              onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
+              placeholder="05xx xxx xx xx"
+            />
+          </div>
+          <div className="field mb-3">
+            <label htmlFor="role" className="font-bold">Rol *</label>
+            <Dropdown
+              id="role"
+              value={newUser.role}
+              options={roleOptions}
+              onChange={(e) => setNewUser({ ...newUser, role: e.value })}
+              placeholder="Rol Seçin"
+            />
+          </div>
+        </div>
       </Dialog>
     </AdminLayout>
   );

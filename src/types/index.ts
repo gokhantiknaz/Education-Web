@@ -16,6 +16,15 @@ export interface User {
   location?: string;
 }
 
+export interface CreateUserRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string;
+  role: 'Admin' | 'ContentManager' | 'Student';
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -312,11 +321,27 @@ export interface CourseSection {
   title: string;
   description?: string;
   displayOrder: number;
+  lessonCount?: number;
   lessons?: Lesson[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateSectionRequest {
+  courseId: string;
+  title: string;
+  description?: string;
+  displayOrder?: number;
+}
+
+export interface UpdateSectionRequest {
+  title: string;
+  description?: string;
+  displayOrder?: number;
 }
 
 export interface CreateLessonRequest {
-  sectionId: string;
+  courseId: string;
   title: string;
   description?: string;
   videoUrl?: string;

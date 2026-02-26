@@ -16,7 +16,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
 import { Toolbar } from 'primereact/toolbar';
 import api, { ApiResponse } from '@/lib/api';
-import { Lesson, Course, CourseSection } from '@/types';
+import { Lesson, Course } from '@/types';
 
 interface CourseOption {
   id: string;
@@ -34,8 +34,7 @@ const emptyLesson = {
   title: '',
   description: '',
   videoUrl: '',
-  videoId: '',
-  durationSeconds: undefined as number | undefined,
+  durationSeconds: null as number | null,
   isFree: false,
   displayOrder: 0,
   isPublished: true,
@@ -136,30 +135,12 @@ export default function LessonsPage() {
 
   const loadSections = async () => {
     try {
-      // Load all sections - we need a backend endpoint for this
-      // For now, load sections when a course is selected
-      const response = await api.get<ApiResponse<{ items: Course[] }>>('/web/courses?pageSize=100');
-      const allSections: SectionOption[] = [];
-
-      // Load sections for each course
-      for (const course of response.data.data.items || []) {
-        try {
-          const sectionsResponse = await api.get<ApiResponse<Course>>(`/web/courses/${course.id}`);
-          const courseDetail = sectionsResponse.data.data;
-          if (courseDetail && (courseDetail as any).sections) {
-            ((courseDetail as any).sections as any[]).forEach((s: any) => {
-              allSections.push({
-                id: s.id,
-                title: s.title,
-                courseId: course.id,
-              });
-            });
-          }
-        } catch (err) {
-          // Ignore errors for individual courses
-        }
-      }
-
+      const response = await api.get<ApiResponse<SectionOption[]>>('/web/courses/sections');
+      const allSections = (response.data.data || []).map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        courseId: s.courseId,
+      }));
       setSections(allSections);
     } catch (error) {
       console.error('Sections load error:', error);
@@ -181,23 +162,23 @@ export default function LessonsPage() {
     setSubmitted(false);
     setIsEditMode(false);
     setEditingLessonId(null);
-    setDialogSelectedCourse(selectedCourseFilter);
     setLessonDialog(true);
   };
 
   const editLesson = (lessonData: Lesson) => {
+    // First set the course so sections can load
+    setDialogSelectedCourse(lessonData.courseId);
+
     setLesson({
       sectionId: lessonData.sectionId,
       title: lessonData.title,
       description: lessonData.description || '',
       videoUrl: lessonData.videoUrl || '',
-      videoId: lessonData.videoId || '',
-      durationSeconds: lessonData.durationSeconds,
+      durationSeconds: lessonData.durationSeconds ?? null,
       isFree: lessonData.isFree,
       displayOrder: lessonData.displayOrder,
       isPublished: lessonData.isPublished,
     });
-    setDialogSelectedCourse(lessonData.courseId);
     setIsEditMode(true);
     setEditingLessonId(lessonData.id);
     setLessonDialog(true);
@@ -221,11 +202,11 @@ export default function LessonsPage() {
           title: lesson.title,
           description: lesson.description || null,
           videoUrl: lesson.videoUrl || null,
-          videoId: lesson.videoId || null,
           durationSeconds: lesson.durationSeconds,
           isFree: lesson.isFree,
           displayOrder: lesson.displayOrder,
           isPublished: lesson.isPublished,
+          sectionId: lesson.sectionId,
         });
         toast.current?.show({
           severity: 'success',
@@ -233,7 +214,16 @@ export default function LessonsPage() {
           detail: 'Ders guncellendi',
         });
       } else {
-        await api.post('/web/lessons', lesson);
+        await api.post('/web/lessons', {
+          sectionId: lesson.sectionId,
+          title: lesson.title,
+          description: lesson.description || null,
+          videoUrl: lesson.videoUrl || null,
+          durationSeconds: lesson.durationSeconds,
+          isFree: lesson.isFree,
+          displayOrder: lesson.displayOrder,
+          isPublished: lesson.isPublished,
+        });
         toast.current?.show({
           severity: 'success',
           summary: 'Basarili',
@@ -558,7 +548,7 @@ export default function LessonsPage() {
                 optionValue="id"
                 placeholder="Bolum secin"
                 className={submitted && !lesson.sectionId ? 'p-invalid' : ''}
-                disabled={!dialogSelectedCourse || isEditMode}
+                disabled={!dialogSelectedCourse}
               />
             </div>
           </div>
@@ -594,26 +584,15 @@ export default function LessonsPage() {
             />
           </div>
 
-          <div className="formgrid grid">
-            <div className="field col-6 mb-4">
-              <label htmlFor="videoId" className="font-bold">Video ID</label>
-              <InputText
-                id="videoId"
-                value={lesson.videoId}
-                onChange={(e) => setLesson({ ...lesson, videoId: e.target.value })}
-                placeholder="Video kimlik numarasi"
-              />
-            </div>
-            <div className="field col-6 mb-4">
-              <label htmlFor="durationSeconds" className="font-bold">Sure (saniye)</label>
-              <InputNumber
-                id="durationSeconds"
-                value={lesson.durationSeconds}
-                onValueChange={(e) => setLesson({ ...lesson, durationSeconds: e.value || undefined })}
-                min={0}
-                placeholder="Ornek: 600 (10 dk)"
-              />
-            </div>
+          <div className="field mb-4">
+            <label htmlFor="durationSeconds" className="font-bold">Sure (saniye)</label>
+            <InputNumber
+              id="durationSeconds"
+              value={lesson.durationSeconds}
+              onValueChange={(e) => setLesson({ ...lesson, durationSeconds: e.value })}
+              min={0}
+              placeholder="Ornek: 600 (10 dk)"
+            />
           </div>
 
           <div className="formgrid grid">

@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
 
   // Users
   USERS: '/web/users',
+  CREATE_USER: '/web/users',
   USER_DETAIL: (id: string) => `/web/users/${id}`,
   USER_ACTIVATE: (id: string) => `/web/users/${id}/activate`,
   USER_DEACTIVATE: (id: string) => `/web/users/${id}/deactivate`,

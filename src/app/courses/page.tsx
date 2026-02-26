@@ -16,7 +16,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { MultiSelect } from 'primereact/multiselect';
 import api, { ApiResponse } from '@/lib/api';
-import { Course, Category, Application } from '@/types';
+import { Course, Category, Application, CourseSection, CreateSectionRequest } from '@/types';
 
 const emptyCourse: Partial<Course> & { applicationIds?: string[] } = {
   title: '',
@@ -31,6 +31,12 @@ const emptyCourse: Partial<Course> & { applicationIds?: string[] } = {
   applicationIds: [],
 };
 
+const emptySection: Partial<CourseSection> = {
+  title: '',
+  description: '',
+  displayOrder: 0,
+};
+
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -42,6 +48,16 @@ export default function CoursesPage() {
   const [submitted, setSubmitted] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const toast = useRef<Toast>(null);
+
+  // Sections management state
+  const [sectionsDialog, setSectionsDialog] = useState(false);
+  const [sections, setSections] = useState<CourseSection[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [sectionDialog, setSectionDialog] = useState(false);
+  const [section, setSection] = useState<Partial<CourseSection>>(emptySection);
+  const [sectionSubmitted, setSectionSubmitted] = useState(false);
+  const [isSectionEditMode, setIsSectionEditMode] = useState(false);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
 
   const [lazyState, setLazyState] = useState({
     first: 0,
@@ -216,6 +232,129 @@ export default function CoursesPage() {
     }
   };
 
+  // Sections management functions
+  const openSections = async (courseData: Course) => {
+    setSelectedCourse(courseData);
+    setSectionsDialog(true);
+    await loadSections(courseData.id);
+  };
+
+  const loadSections = async (courseId: string) => {
+    setSectionsLoading(true);
+    try {
+      const response = await api.get<ApiResponse<CourseSection[]>>(`/web/courses/sections?courseId=${courseId}`);
+      setSections(response.data.data || []);
+    } catch (error) {
+      console.error('Sections load error:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load sections',
+      });
+    } finally {
+      setSectionsLoading(false);
+    }
+  };
+
+  const openNewSection = () => {
+    setSection({ ...emptySection, courseId: selectedCourse?.id, displayOrder: sections.length });
+    setSectionSubmitted(false);
+    setIsSectionEditMode(false);
+    setSectionDialog(true);
+  };
+
+  const editSection = (sectionData: CourseSection) => {
+    setSection(sectionData);
+    setIsSectionEditMode(true);
+    setSectionDialog(true);
+  };
+
+  const hideSectionDialog = () => {
+    setSectionSubmitted(false);
+    setSectionDialog(false);
+  };
+
+  const saveSection = async () => {
+    setSectionSubmitted(true);
+
+    if (!section.title?.trim()) {
+      return;
+    }
+
+    try {
+      const payload: CreateSectionRequest = {
+        courseId: selectedCourse!.id,
+        title: section.title,
+        description: section.description,
+        displayOrder: section.displayOrder || 0,
+      };
+
+      if (isSectionEditMode && section.id) {
+        await api.put(`/web/courses/sections/${section.id}`, {
+          title: section.title,
+          description: section.description,
+          displayOrder: section.displayOrder,
+        });
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Section updated successfully',
+        });
+      } else {
+        await api.post(`/web/courses/${selectedCourse!.id}/sections`, {
+          title: payload.title,
+          description: payload.description,
+          displayOrder: payload.displayOrder,
+        });
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Section created successfully',
+        });
+      }
+      setSectionDialog(false);
+      if (selectedCourse) {
+        await loadSections(selectedCourse.id);
+      }
+    } catch (error) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Operation failed',
+      });
+    }
+  };
+
+  const confirmDeleteSection = (sectionData: CourseSection) => {
+    confirmDialog({
+      message: `Are you sure you want to delete "${sectionData.title}"?`,
+      header: 'Delete Confirmation',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClassName: 'p-button-danger',
+      accept: () => deleteSection(sectionData),
+    });
+  };
+
+  const deleteSection = async (sectionData: CourseSection) => {
+    try {
+      await api.delete(`/web/courses/sections/${sectionData.id}`);
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Section deleted successfully',
+      });
+      if (selectedCourse) {
+        await loadSections(selectedCourse.id);
+      }
+    } catch (error) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to delete section',
+      });
+    }
+  };
+
   const priceBodyTemplate = (rowData: Course) => {
     return rowData.discountPrice ? (
       <div>
@@ -257,6 +396,12 @@ export default function CoursesPage() {
     return (
       <div className="flex gap-2">
         <Button
+          icon="pi pi-list"
+          className="p-button-rounded p-button-text p-button-secondary"
+          onClick={() => openSections(rowData)}
+          tooltip="Sections"
+        />
+        <Button
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-info"
           onClick={() => editCourse(rowData)}
@@ -291,6 +436,32 @@ export default function CoursesPage() {
       <Button label="Save" icon="pi pi-check" onClick={saveCourse} />
     </>
   );
+
+  const sectionDialogFooter = (
+    <>
+      <Button label="Cancel" icon="pi pi-times" className="p-button-text" onClick={hideSectionDialog} />
+      <Button label="Save" icon="pi pi-check" onClick={saveSection} />
+    </>
+  );
+
+  const sectionsActionsTemplate = (rowData: CourseSection) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-text p-button-info"
+          onClick={() => editSection(rowData)}
+          tooltip="Edit"
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={() => confirmDeleteSection(rowData)}
+          tooltip="Delete"
+        />
+      </div>
+    );
+  };
 
   return (
     <AdminLayout>
@@ -453,6 +624,81 @@ export default function CoursesPage() {
               onChange={(e) => setCourse({ ...course, isFeatured: e.checked })}
             />
             <label htmlFor="isFeatured" className="ml-2">Featured</label>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Sections Dialog */}
+      <Dialog
+        visible={sectionsDialog}
+        style={{ width: '900px' }}
+        header={`Sections - ${selectedCourse?.title}`}
+        modal
+        onHide={() => setSectionsDialog(false)}
+      >
+        <div className="mb-3">
+          <Button
+            label="New Section"
+            icon="pi pi-plus"
+            onClick={openNewSection}
+            size="small"
+          />
+        </div>
+        <DataTable
+          value={sections}
+          loading={sectionsLoading}
+          emptyMessage="No sections found"
+          size="small"
+        >
+          <Column field="displayOrder" header="Order" sortable style={{ width: '80px' }} />
+          <Column field="title" header="Title" sortable />
+          <Column field="description" header="Description" />
+          <Column field="lessonCount" header="Lessons" style={{ width: '100px' }} />
+          <Column body={sectionsActionsTemplate} header="Actions" style={{ width: '120px' }} />
+        </DataTable>
+      </Dialog>
+
+      {/* Section Edit Dialog */}
+      <Dialog
+        visible={sectionDialog}
+        style={{ width: '500px' }}
+        header={isSectionEditMode ? 'Edit Section' : 'New Section'}
+        modal
+        footer={sectionDialogFooter}
+        onHide={hideSectionDialog}
+      >
+        <div className="p-fluid">
+          <div className="field mb-4">
+            <label htmlFor="sectionTitle" className="font-bold">Title *</label>
+            <InputText
+              id="sectionTitle"
+              value={section.title}
+              onChange={(e) => setSection({ ...section, title: e.target.value })}
+              required
+              className={sectionSubmitted && !section.title ? 'p-invalid' : ''}
+            />
+            {sectionSubmitted && !section.title && (
+              <small className="p-error">Title is required.</small>
+            )}
+          </div>
+
+          <div className="field mb-4">
+            <label htmlFor="sectionDescription" className="font-bold">Description</label>
+            <InputTextarea
+              id="sectionDescription"
+              value={section.description}
+              onChange={(e) => setSection({ ...section, description: e.target.value })}
+              rows={3}
+            />
+          </div>
+
+          <div className="field mb-4">
+            <label htmlFor="sectionOrder" className="font-bold">Display Order</label>
+            <InputNumber
+              id="sectionOrder"
+              value={section.displayOrder}
+              onValueChange={(e) => setSection({ ...section, displayOrder: e.value || 0 })}
+            />
           </div>
         </div>
       </Dialog>

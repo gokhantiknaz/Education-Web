@@ -368,3 +368,69 @@ export interface BulkUpdateLessonsRequest {
   isPublished?: boolean;
   isFree?: boolean;
 }
+
+// Promo Code types
+export interface PromoCode {
+  id: string;
+  code: string;
+  description?: string;
+  discountType: 'Percentage' | 'FixedAmount';
+  discountValue: number;
+  courseId?: string;
+  courseTitle?: string;
+  maxUsageCount: number;
+  usageCount: number;
+  maxUsagePerUser: number;
+  minimumOrderAmount?: number;
+  maxDiscountAmount?: number;
+  validFrom?: string;
+  validTo?: string;
+  isActive: boolean;
+  createdAt: string;
+  isValid?: boolean;
+  remainingUsage?: number;
+  usagePercentage?: number;
+}
+
+export interface PromoCodeDetail extends PromoCode {
+  recentUsages: PromoCodeUsage[];
+}
+
+export interface PromoCodeUsage {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  orderId?: string;
+  discountApplied: number;
+  usedAt: string;
+}
+
+export interface CreatePromoCodeRequest {
+  code: string;
+  description?: string;
+  discountType: 'Percentage' | 'FixedAmount';
+  discountValue: number;
+  courseId?: string;
+  maxUsageCount?: number;
+  maxUsagePerUser?: number;
+  minimumOrderAmount?: number;
+  maxDiscountAmount?: number;
+  validFrom?: string;
+  validTo?: string;
+  isActive?: boolean;
+}
+
+export interface UpdatePromoCodeRequest {
+  description?: string;
+  discountType?: 'Percentage' | 'FixedAmount';
+  discountValue?: number;
+  courseId?: string;
+  maxUsageCount?: number;
+  maxUsagePerUser?: number;
+  minimumOrderAmount?: number;
+  maxDiscountAmount?: number;
+  validFrom?: string;
+  validTo?: string;
+  isActive?: boolean;
+}

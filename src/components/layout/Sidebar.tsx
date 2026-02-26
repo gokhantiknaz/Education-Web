@@ -27,6 +27,7 @@ const menuSections: MenuSection[] = [
       { label: 'Users', icon: 'pi pi-users', href: '/users' },
       { label: 'Courses', icon: 'pi pi-book', href: '/courses' },
       { label: 'Categories', icon: 'pi pi-tags', href: '/categories' },
+      { label: 'Promo Codes', icon: 'pi pi-ticket', href: '/promo-codes' },
     ],
   },
   {

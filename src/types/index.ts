@@ -505,3 +505,84 @@ export interface GeneralSettings {
   maxDocumentSize?: number | null;
   maxDescriptionLength?: number | null;
 }
+
+// Notification types
+export type RecipientType = 'All' | 'Role' | 'SpecificUsers';
+export type NotificationBatchStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
+
+export interface SendNotificationRequest {
+  title: string;
+  message: string;
+  type?: string;
+  actionUrl?: string;
+  recipientType: RecipientType;
+  targetRole?: string;
+  targetUserIds?: string[];
+  sendPush: boolean;
+  relatedCourseId?: string;
+  scheduledAt?: string;
+}
+
+export interface AnnounceNewCourseRequest {
+  courseId: string;
+  customTitle?: string;
+  customMessage?: string;
+  sendPush: boolean;
+  recipientType: RecipientType;
+  targetRole?: string;
+}
+
+export interface NotificationBatch {
+  id: string;
+  senderId: string;
+  senderName?: string;
+  title: string;
+  message: string;
+  type?: string;
+  recipientType: RecipientType;
+  targetRole?: string;
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  status: NotificationBatchStatus;
+  sendPush: boolean;
+  relatedCourseId?: string;
+  relatedCourseName?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface AdminNotification {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  senderId?: string;
+  senderName?: string;
+  title: string;
+  message: string;
+  type?: string;
+  actionUrl?: string;
+  isRead: boolean;
+  readAt?: string;
+  isPushSent: boolean;
+  pushSentAt?: string;
+  isScheduled: boolean;
+  scheduledAt?: string;
+  isBroadcast: boolean;
+  batchId?: string;
+  relatedCourseId?: string;
+  relatedCourseName?: string;
+  createdAt: string;
+}
+
+export interface NotificationStats {
+  totalSent: number;
+  totalRead: number;
+  totalUnread: number;
+  readRate: number;
+  totalPushSent: number;
+  pendingScheduled: number;
+  totalBatches: number;
+  failedBatches: number;
+}

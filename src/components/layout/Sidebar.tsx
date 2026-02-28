@@ -27,6 +27,7 @@ const menuSections: MenuSection[] = [
       { label: 'Users', icon: 'pi pi-users', href: '/users' },
       { label: 'Courses', icon: 'pi pi-book', href: '/courses' },
       { label: 'Categories', icon: 'pi pi-tags', href: '/categories' },
+      { label: 'Notifications', icon: 'pi pi-bell', href: '/notifications' },
       { label: 'Promo Codes', icon: 'pi pi-ticket', href: '/promo-codes' },
     ],
   },
@@ -41,6 +42,7 @@ const menuSections: MenuSection[] = [
   {
     title: 'Reports',
     items: [
+      { label: 'Raporlar', icon: 'pi pi-chart-bar', href: '/reports' },
       { label: 'Enrollments', icon: 'pi pi-chart-line', href: '/enrollments' },
       { label: 'Orders', icon: 'pi pi-shopping-cart', href: '/orders' },
       { label: 'Reviews', icon: 'pi pi-comments', href: '/reviews' },

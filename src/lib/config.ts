@@ -54,4 +54,15 @@ export const API_ENDPOINTS = {
   LESSONS_BY_SECTION: (sectionId: string) => `/web/lessons/section/${sectionId}`,
   LESSONS_REORDER: (sectionId: string) => `/web/lessons/section/${sectionId}/reorder`,
   LESSONS_BULK_UPDATE: '/web/lessons/bulk-update',
+
+  // Notifications
+  NOTIFICATIONS: '/web/notifications',
+  NOTIFICATIONS_SEND: '/web/notifications/send',
+  NOTIFICATIONS_ANNOUNCE_COURSE: '/web/notifications/announce-course',
+  NOTIFICATION_BATCHES: '/web/notifications/batches',
+  NOTIFICATION_BATCH_DETAIL: (id: string) => `/web/notifications/batches/${id}`,
+  NOTIFICATION_BATCH_RESEND: (id: string) => `/web/notifications/batches/${id}/resend`,
+  NOTIFICATION_STATS: '/web/notifications/stats',
+  NOTIFICATIONS_SCHEDULED: '/web/notifications/scheduled',
+  NOTIFICATION_DETAIL: (id: string) => `/web/notifications/${id}`,
 };

@@ -16,7 +16,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { MultiSelect } from 'primereact/multiselect';
 import api, { ApiResponse } from '@/lib/api';
-import { Course, Category, Application, CourseSection, CreateSectionRequest } from '@/types';
+import { Course, Category, Application, CourseSection, CreateSectionRequest, GeneralSettings } from '@/types';
 
 const emptyCourse: Partial<Course> & { applicationIds?: string[] } = {
   title: '',
@@ -59,6 +59,9 @@ export default function CoursesPage() {
   const [isSectionEditMode, setIsSectionEditMode] = useState(false);
   const [sectionsLoading, setSectionsLoading] = useState(false);
 
+  // General settings (limits)
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings | null>(null);
+
   const [lazyState, setLazyState] = useState({
     first: 0,
     rows: 10,
@@ -75,7 +78,19 @@ export default function CoursesPage() {
     loadCourses();
     loadCategories();
     loadApplications();
+    loadGeneralSettings();
   }, [lazyState]);
+
+  const loadGeneralSettings = async () => {
+    try {
+      const response = await api.get<ApiResponse<GeneralSettings>>('/web/settings/general');
+      if (response.data?.data) {
+        setGeneralSettings(response.data.data);
+      }
+    } catch (error) {
+      console.error('General settings load error:', error);
+    }
+  };
 
   const loadCourses = async () => {
     setLoading(true);
@@ -506,16 +521,27 @@ export default function CoursesPage() {
       >
         <div className="p-fluid">
           <div className="field mb-4">
-            <label htmlFor="title" className="font-bold">Title *</label>
+            <label htmlFor="title" className="font-bold">
+              Kurs Adi *
+              {generalSettings?.maxCourseNameLength && (
+                <span className="font-normal text-500 ml-2">(maks {generalSettings.maxCourseNameLength} karakter)</span>
+              )}
+            </label>
             <InputText
               id="title"
               value={course.title}
               onChange={(e) => setCourse({ ...course, title: e.target.value })}
               required
+              maxLength={generalSettings?.maxCourseNameLength || undefined}
               className={submitted && !course.title ? 'p-invalid' : ''}
             />
+            {generalSettings?.maxCourseNameLength && course.title && (
+              <small className={`block mt-1 ${(course.title?.length || 0) > generalSettings.maxCourseNameLength ? 'text-red-500' : 'text-500'}`}>
+                {generalSettings.maxCourseNameLength - (course.title?.length || 0)} karakter kaldi
+              </small>
+            )}
             {submitted && !course.title && (
-              <small className="p-error">Title is required.</small>
+              <small className="p-error">Kurs adi gerekli.</small>
             )}
           </div>
 
@@ -553,13 +579,24 @@ export default function CoursesPage() {
           </div>
 
           <div className="field mb-4">
-            <label htmlFor="shortDescription" className="font-bold">Short Description</label>
+            <label htmlFor="shortDescription" className="font-bold">
+              Kisa Aciklama
+              {generalSettings?.maxDescriptionLength && (
+                <span className="font-normal text-500 ml-2">(maks {generalSettings.maxDescriptionLength} karakter)</span>
+              )}
+            </label>
             <InputTextarea
               id="shortDescription"
               value={course.shortDescription}
               onChange={(e) => setCourse({ ...course, shortDescription: e.target.value })}
               rows={2}
+              maxLength={generalSettings?.maxDescriptionLength || undefined}
             />
+            {generalSettings?.maxDescriptionLength && (
+              <small className={`block mt-1 ${(course.shortDescription?.length || 0) > generalSettings.maxDescriptionLength ? 'text-red-500' : 'text-500'}`}>
+                {generalSettings.maxDescriptionLength - (course.shortDescription?.length || 0)} karakter kaldi
+              </small>
+            )}
           </div>
 
           <div className="field mb-4">

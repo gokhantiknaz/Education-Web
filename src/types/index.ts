@@ -305,6 +305,15 @@ export interface Lesson {
   isPublished: boolean;
   videoUrl?: string;
   videoId?: string;
+  // Document fields
+  documentUrl?: string;
+  documentName?: string;
+  documentType?: string;
+  documentSize?: number;
+  isDocumentUploaded: boolean;
+  contentType: 'Video' | 'Document' | 'VideoAndDocument';
+  hasVideo: boolean;
+  hasDocument: boolean;
   sectionId: string;
   sectionTitle: string;
   courseId: string;
@@ -433,4 +442,66 @@ export interface UpdatePromoCodeRequest {
   validFrom?: string;
   validTo?: string;
   isActive?: boolean;
+}
+
+// Enrollment types
+export interface Enrollment {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userProfileImage?: string;
+  courseId: string;
+  courseTitle: string;
+  courseThumbnail?: string;
+  progressPercentage: number;
+  enrolledAt: string;
+  lastAccessedAt?: string;
+  completedAt?: string;
+  expiresAt?: string;
+  isActive: boolean;
+  hasCertificate: boolean;
+}
+
+export interface CreateEnrollmentRequest {
+  userId: string;
+  courseId: string;
+  expiresAt?: string;
+}
+
+export interface UpdateEnrollmentRequest {
+  progressPercentage?: number;
+  isActive?: boolean;
+  expiresAt?: string;
+}
+
+// System Settings types
+export interface StorageSettings {
+  provider: 'Local' | 'AmazonS3' | 'AzureBlob';
+  awsAccessKeyId?: string;
+  awsSecretAccessKey?: string;
+  awsBucketName?: string;
+  awsRegion?: string;
+  cdnBaseUrl?: string;
+  azureConnectionString?: string;
+  azureContainerName?: string;
+}
+
+export interface AwsRegion {
+  value: string;
+  label: string;
+}
+
+export interface StorageConnectionTestResult {
+  success: boolean;
+  message?: string;
+  bucketLocation?: string;
+}
+
+export interface GeneralSettings {
+  maxLessonNameLength?: number | null;
+  maxCourseNameLength?: number | null;
+  maxVideoDuration?: number | null;
+  maxDocumentSize?: number | null;
+  maxDescriptionLength?: number | null;
 }

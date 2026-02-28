@@ -16,6 +16,8 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { OrderList } from 'primereact/orderlist';
+import { Message } from 'primereact/message';
+import { Divider } from 'primereact/divider';
 import api, { ApiResponse } from '@/lib/api';
 import { Quiz, QuizQuestion, QuizOption, Course, CreateOptionRequest } from '@/types';
 
@@ -325,8 +327,32 @@ export default function QuizzesPage() {
       return;
     }
 
-    // Validate options for choice questions
-    if (question.questionType !== 'FillInBlank') {
+    // Validate options
+    if (question.questionType === 'FillInBlank') {
+      // FillInBlank: either options (drag-drop) or correctAnswer (text input) required
+      const validOptions = question.options.filter(o => o.optionText.trim());
+      const hasCorrectOption = validOptions.some(o => o.isCorrect);
+      const hasTextAnswer = question.correctAnswer?.trim();
+
+      if (validOptions.length === 0 && !hasTextAnswer) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Uyari',
+          detail: 'Secenekler veya metin cevap girilmeli',
+        });
+        return;
+      }
+
+      if (validOptions.length > 0 && !hasCorrectOption) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Uyari',
+          detail: 'Dogru secenek isaretlenmeli',
+        });
+        return;
+      }
+    } else {
+      // SingleChoice/MultipleChoice
       const validOptions = question.options.filter(o => o.optionText.trim());
       if (validOptions.length < 2) {
         toast.current?.show({
@@ -345,23 +371,12 @@ export default function QuizzesPage() {
         });
         return;
       }
-    } else {
-      if (!question.correctAnswer?.trim()) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Uyari',
-          detail: 'Dogru cevap girilmeli',
-        });
-        return;
-      }
     }
 
     try {
       const payload = {
         ...question,
-        options: question.questionType !== 'FillInBlank'
-          ? question.options.filter(o => o.optionText.trim())
-          : [],
+        options: question.options.filter(o => o.optionText.trim()),
       };
 
       if (isEditingQuestion && editingQuestionId) {
@@ -747,14 +762,74 @@ export default function QuizzesPage() {
           </div>
 
           {question.questionType === 'FillInBlank' ? (
-            <div className="field mb-4">
-              <label htmlFor="correctAnswer" className="font-bold">Dogru Cevap *</label>
-              <InputText
-                id="correctAnswer"
-                value={question.correctAnswer}
-                onChange={(e) => setQuestion({ ...question, correctAnswer: e.target.value })}
-                placeholder="Bos birakilan yerin cevabi"
+            <div className="mb-4">
+              <Message
+                severity="info"
+                className="mb-3 w-full"
+                content={
+                  <div className="flex flex-column gap-1">
+                    <span className="font-bold">Surukle-Birak Modu</span>
+                    <span>Soru metninde bosluk icin <code className="bg-gray-200 px-1 border-round">{'{{blank}}'}</code> kullanin.</span>
+                    <span>Ornek: "Turkiye'nin baskenti {'{{blank}}'} sehridir."</span>
+                  </div>
+                }
               />
+
+              <div className="field mb-4">
+                <label className="font-bold mb-2 block">Secenekler *</label>
+                <small className="text-color-secondary block mb-3">
+                  Dogru cevabi isaretleyin. Diger secenekler yanlis secenek olarak gosterilecek.
+                </small>
+
+                {question.options.map((option, index) => (
+                  <div key={index} className="flex align-items-center gap-2 mb-2">
+                    <Checkbox
+                      checked={option.isCorrect || false}
+                      onChange={(e) => {
+                        // For FillInBlank, only one option can be correct
+                        const newOptions = question.options.map((opt, i) => ({
+                          ...opt,
+                          isCorrect: i === index ? e.checked : false
+                        }));
+                        setQuestion({ ...question, options: newOptions });
+                      }}
+                    />
+                    <InputText
+                      value={option.optionText}
+                      onChange={(e) => updateOption(index, 'optionText', e.target.value)}
+                      placeholder={`Secenek ${index + 1}`}
+                      className="flex-grow-1"
+                    />
+                    {question.options.length > 2 && (
+                      <Button
+                        icon="pi pi-times"
+                        className="p-button-rounded p-button-text p-button-danger p-button-sm"
+                        onClick={() => removeOption(index)}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <Button
+                  label="Secenek Ekle"
+                  icon="pi pi-plus"
+                  className="p-button-text p-button-sm mt-2"
+                  onClick={addOption}
+                />
+              </div>
+
+              <Divider />
+
+              <div className="field mb-4">
+                <label htmlFor="correctAnswer" className="font-bold">Metin Cevap (Opsiyonel)</label>
+                <InputText
+                  id="correctAnswer"
+                  value={question.correctAnswer}
+                  onChange={(e) => setQuestion({ ...question, correctAnswer: e.target.value })}
+                  placeholder="Metin girisi modu icin dogru cevap"
+                />
+                <small className="text-color-secondary">Secenek yoksa veya metin girisi isteniyorsa kullanilir</small>
+              </div>
             </div>
           ) : (
             <div className="field mb-4">

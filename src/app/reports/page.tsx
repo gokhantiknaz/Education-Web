@@ -184,8 +184,8 @@ export default function ReportsPage() {
       console.error('Reports load error:', error);
       toast.current?.show({
         severity: 'error',
-        summary: 'Hata',
-        detail: 'Raporlar yuklenemedi'
+        summary: 'Error',
+        detail: 'Failed to load reports'
       });
     } finally {
       setIsLoading(false);
@@ -195,10 +195,10 @@ export default function ReportsPage() {
   const initCharts = (enrollment: EnrollmentReport, activity: UserActivity, quiz: QuizPerformance) => {
     // Enrollment trend
     setEnrollmentChartData({
-      labels: enrollment.byDate.map(d => new Date(d.date).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })),
+      labels: enrollment.byDate.map(d => new Date(d.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })),
       datasets: [
         {
-          label: 'Kayitlar',
+          label: 'Enrollments',
           data: enrollment.byDate.map(d => d.count),
           borderColor: '#6366f1',
           backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -206,7 +206,7 @@ export default function ReportsPage() {
           tension: 0.4
         },
         {
-          label: 'Tamamlanan',
+          label: 'Completed',
           data: enrollment.byDate.map(d => d.completedCount),
           borderColor: '#22c55e',
           backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -228,16 +228,16 @@ export default function ReportsPage() {
 
     // Activity trend
     setActivityChartData({
-      labels: activity.byDate.map(d => new Date(d.date).toLocaleDateString('tr-TR', { weekday: 'short' })),
+      labels: activity.byDate.map(d => new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })),
       datasets: [
         {
-          label: 'Aktif Kullanici',
+          label: 'Active Users',
           data: activity.byDate.map(d => d.activeUsers),
           borderColor: '#6366f1',
           tension: 0.4
         },
         {
-          label: 'Ders Izleme',
+          label: 'Lesson Views',
           data: activity.byDate.map(d => d.lessonViews),
           borderColor: '#f59e0b',
           tension: 0.4
@@ -247,7 +247,7 @@ export default function ReportsPage() {
 
     // Quiz pass rate
     setQuizChartData({
-      labels: ['Basarili', 'Basarisiz'],
+      labels: ['Passed', 'Failed'],
       datasets: [{
         data: [quiz.totalPassed, quiz.totalFailed],
         backgroundColor: ['#22c55e', '#ef4444'],
@@ -257,17 +257,17 @@ export default function ReportsPage() {
   };
 
   const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
   const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${Math.round(minutes)} dk`;
+    if (minutes < 60) return `${Math.round(minutes)} min`;
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
-    return `${hours} sa ${mins} dk`;
+    return `${hours}h ${mins}min`;
   };
 
   const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+    new Date(dateStr).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
   const getChangeIcon = (current: number, previous: number) => {
     if (current > previous) return <i className="pi pi-arrow-up text-green-500 ml-2" />;
@@ -335,8 +335,8 @@ export default function ReportsPage() {
 
       <div className="flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="text-2xl font-semibold m-0">Raporlar</h2>
-          <p className="text-color-secondary mt-1">Detayli platform analizleri</p>
+          <h2 className="text-2xl font-semibold m-0">Reports</h2>
+          <p className="text-color-secondary mt-1">Detailed platform analytics</p>
         </div>
         <div className="flex gap-3 align-items-center">
           <Dropdown
@@ -345,7 +345,7 @@ export default function ReportsPage() {
             onChange={(e) => setSelectedCourse(e.value)}
             optionLabel="title"
             optionValue="id"
-            placeholder="Tum Kurslar"
+            placeholder="All Courses"
             showClear
             className="w-15rem"
           />
@@ -354,7 +354,7 @@ export default function ReportsPage() {
             onChange={(e) => setDateRange(e.value as Date[])}
             selectionMode="range"
             dateFormat="dd/mm/yy"
-            placeholder="Tarih Araligi"
+            placeholder="Date Range"
             showIcon
             className="w-15rem"
           />
@@ -362,7 +362,7 @@ export default function ReportsPage() {
             icon="pi pi-refresh"
             onClick={loadReports}
             loading={isLoading}
-            tooltip="Yenile"
+            tooltip="Refresh"
           />
         </div>
       </div>
@@ -372,11 +372,11 @@ export default function ReportsPage() {
         <div className="grid mb-4">
           <div className="col-12 md:col-6 lg:col-3">
             <SummaryCard
-              title="Toplam Kayit"
+              title="Total Enrollments"
               value={summary.totalEnrollments}
               subValue={
                 <span className="flex align-items-center">
-                  Bu donem: {summary.enrollmentsThisPeriod}
+                  This period: {summary.enrollmentsThisPeriod}
                   {getChangeIcon(summary.enrollmentsThisPeriod, summary.enrollmentsPreviousPeriod)}
                   <span className="text-500 ml-1">
                     {getChangePercent(summary.enrollmentsThisPeriod, summary.enrollmentsPreviousPeriod)}
@@ -389,20 +389,20 @@ export default function ReportsPage() {
           </div>
           <div className="col-12 md:col-6 lg:col-3">
             <SummaryCard
-              title="Tamamlanan"
+              title="Completed"
               value={summary.totalCompletions}
-              subValue={`%${summary.averageCompletionRate.toFixed(1)} tamamlanma orani`}
+              subValue={`${summary.averageCompletionRate.toFixed(1)}% completion rate`}
               icon="pi pi-check-circle"
               color="#22c55e"
             />
           </div>
           <div className="col-12 md:col-6 lg:col-3">
             <SummaryCard
-              title="Toplam Gelir"
+              title="Total Revenue"
               value={formatCurrency(summary.totalRevenue)}
               subValue={
                 <span className="flex align-items-center">
-                  Bu donem: {formatCurrency(summary.revenueThisPeriod)}
+                  This period: {formatCurrency(summary.revenueThisPeriod)}
                   {getChangeIcon(summary.revenueThisPeriod, summary.revenuePreviousPeriod)}
                 </span>
               }
@@ -412,9 +412,9 @@ export default function ReportsPage() {
           </div>
           <div className="col-12 md:col-6 lg:col-3">
             <SummaryCard
-              title="Izlenme Suresi"
+              title="Watch Time"
               value={formatDuration(summary.totalWatchTimeMinutes)}
-              subValue={`${summary.totalQuizAttempts} quiz denemesi`}
+              subValue={`${summary.totalQuizAttempts} quiz attempts`}
               icon="pi pi-clock"
               color="#8b5cf6"
             />
@@ -425,27 +425,27 @@ export default function ReportsPage() {
       {/* Report Tabs */}
       <TabView>
         {/* Enrollment Report */}
-        <TabPanel header="Kayit Raporu" leftIcon="pi pi-user-plus mr-2">
+        <TabPanel header="Enrollment Report" leftIcon="pi pi-user-plus mr-2">
           {enrollmentReport && (
             <div className="grid">
               <div className="col-12 lg:col-8">
-                <Card title="Kayit Trendi">
+                <Card title="Enrollment Trend">
                   <Chart type="line" data={enrollmentChartData} options={chartOptions} style={{ height: '300px' }} />
                 </Card>
               </div>
               <div className="col-12 lg:col-4">
-                <Card title="Durum Dagilimi">
+                <Card title="Status Distribution">
                   <Chart type="doughnut" data={statusChartData} options={pieOptions} style={{ height: '300px' }} />
                 </Card>
               </div>
               <div className="col-12 lg:col-6">
-                <Card title="Kurs Bazli Kayitlar">
+                <Card title="Enrollments by Course">
                   <DataTable value={enrollmentReport.byCourse} className="p-datatable-sm" scrollable scrollHeight="300px">
-                    <Column field="courseTitle" header="Kurs" />
-                    <Column field="enrollmentCount" header="Kayit" style={{ width: '80px' }} />
-                    <Column field="completionCount" header="Tamamlanan" style={{ width: '100px' }} />
+                    <Column field="courseTitle" header="Course" />
+                    <Column field="enrollmentCount" header="Enrollments" style={{ width: '80px' }} />
+                    <Column field="completionCount" header="Completed" style={{ width: '100px' }} />
                     <Column
-                      header="Ort. Ilerleme"
+                      header="Avg. Progress"
                       body={(row) => (
                         <div className="w-full">
                           <ProgressBar value={row.averageProgress} showValue={false} style={{ height: '8px' }} />
@@ -458,16 +458,16 @@ export default function ReportsPage() {
                 </Card>
               </div>
               <div className="col-12 lg:col-6">
-                <Card title="Son Kayitlar">
+                <Card title="Recent Enrollments">
                   <DataTable value={enrollmentReport.items.slice(0, 10)} className="p-datatable-sm" scrollable scrollHeight="300px">
-                    <Column field="userName" header="Kullanici" />
-                    <Column field="courseTitle" header="Kurs" />
+                    <Column field="userName" header="User" />
+                    <Column field="courseTitle" header="Course" />
                     <Column
-                      header="Durum"
+                      header="Status"
                       body={(row) => (
                         <Tag
                           value={row.status}
-                          severity={row.status === 'Tamamlandı' ? 'success' : row.status === 'Devam Ediyor' ? 'warning' : 'danger'}
+                          severity={row.status === 'Completed' ? 'success' : row.status === 'In Progress' ? 'warning' : 'danger'}
                         />
                       )}
                       style={{ width: '120px' }}
@@ -480,7 +480,7 @@ export default function ReportsPage() {
         </TabPanel>
 
         {/* Course Performance */}
-        <TabPanel header="Kurs Performansi" leftIcon="pi pi-book mr-2">
+        <TabPanel header="Course Performance" leftIcon="pi pi-book mr-2">
           {coursePerformance && (
             <Card>
               <DataTable
@@ -488,12 +488,12 @@ export default function ReportsPage() {
                 className="p-datatable-sm"
                 paginator
                 rows={10}
-                emptyMessage="Veri bulunamadi"
+                emptyMessage="No data found"
               >
-                <Column field="title" header="Kurs" sortable style={{ minWidth: '200px' }} />
-                <Column field="enrollmentCount" header="Kayit" sortable style={{ width: '80px' }} />
+                <Column field="title" header="Course" sortable style={{ minWidth: '200px' }} />
+                <Column field="enrollmentCount" header="Enrollments" sortable style={{ width: '80px' }} />
                 <Column
-                  header="Tamamlanma"
+                  header="Completion"
                   body={(row) => (
                     <Tag
                       value={`${Math.round(row.completionRate)}%`}
@@ -504,16 +504,16 @@ export default function ReportsPage() {
                   sortField="completionRate"
                   style={{ width: '100px' }}
                 />
-                <Column field="totalViews" header="Izlenme" sortable style={{ width: '90px' }} />
+                <Column field="totalViews" header="Views" sortable style={{ width: '90px' }} />
                 <Column
-                  header="Izlenme Suresi"
+                  header="Watch Time"
                   body={(row) => formatDuration(row.totalWatchTimeMinutes)}
                   sortable
                   sortField="totalWatchTimeMinutes"
                   style={{ width: '120px' }}
                 />
                 <Column
-                  header="Puan"
+                  header="Rating"
                   body={(row) => (
                     <span className="flex align-items-center gap-1">
                       <i className="pi pi-star-fill text-yellow-500" />
@@ -525,14 +525,14 @@ export default function ReportsPage() {
                   style={{ width: '80px' }}
                 />
                 <Column
-                  header="Gelir"
+                  header="Revenue"
                   body={(row) => formatCurrency(row.revenue)}
                   sortable
                   sortField="revenue"
                   style={{ width: '120px' }}
                 />
                 <Column
-                  header="Quiz Basari"
+                  header="Quiz Pass Rate"
                   body={(row) => row.quizAttempts > 0 ? `%${Math.round(row.quizPassRate)}` : '-'}
                   sortable
                   sortField="quizPassRate"
@@ -544,29 +544,29 @@ export default function ReportsPage() {
         </TabPanel>
 
         {/* User Activity */}
-        <TabPanel header="Kullanici Aktivitesi" leftIcon="pi pi-chart-line mr-2">
+        <TabPanel header="User Activity" leftIcon="pi pi-chart-line mr-2">
           {userActivity && (
             <div className="grid">
               <div className="col-12">
-                <Card title="Gunluk Aktivite">
+                <Card title="Daily Activity">
                   <Chart type="line" data={activityChartData} options={chartOptions} style={{ height: '300px' }} />
                 </Card>
               </div>
               <div className="col-12">
-                <Card title={`En Aktif Kullanicilar (${userActivity.totalActiveUsers} aktif)`}>
+                <Card title={`Most Active Users (${userActivity.totalActiveUsers} active)`}>
                   <DataTable
                     value={userActivity.items}
                     className="p-datatable-sm"
                     paginator
                     rows={10}
-                    emptyMessage="Veri bulunamadi"
+                    emptyMessage="No data found"
                   >
-                    <Column field="userName" header="Kullanici" sortable style={{ minWidth: '150px' }} />
-                    <Column field="userEmail" header="E-posta" style={{ minWidth: '200px' }} />
-                    <Column field="enrollmentCount" header="Kayit" sortable style={{ width: '80px' }} />
-                    <Column field="completedCourses" header="Tamamlanan" sortable style={{ width: '100px' }} />
+                    <Column field="userName" header="User" sortable style={{ minWidth: '150px' }} />
+                    <Column field="userEmail" header="Email" style={{ minWidth: '200px' }} />
+                    <Column field="enrollmentCount" header="Enrollments" sortable style={{ width: '80px' }} />
+                    <Column field="completedCourses" header="Completed" sortable style={{ width: '100px' }} />
                     <Column
-                      header="Izlenme Suresi"
+                      header="Watch Time"
                       body={(row) => formatDuration(row.totalWatchTimeMinutes)}
                       sortable
                       sortField="totalWatchTimeMinutes"
@@ -574,7 +574,7 @@ export default function ReportsPage() {
                     />
                     <Column field="quizAttempts" header="Quiz" sortable style={{ width: '80px' }} />
                     <Column
-                      header="Son Aktivite"
+                      header="Last Activity"
                       body={(row) => row.lastActivityAt ? formatDate(row.lastActivityAt) : '-'}
                       sortable
                       sortField="lastActivityAt"
@@ -588,50 +588,50 @@ export default function ReportsPage() {
         </TabPanel>
 
         {/* Quiz Performance */}
-        <TabPanel header="Quiz Performansi" leftIcon="pi pi-question-circle mr-2">
+        <TabPanel header="Quiz Performance" leftIcon="pi pi-question-circle mr-2">
           {quizPerformance && (
             <div className="grid">
               <div className="col-12 lg:col-4">
-                <Card title="Genel Basari Orani">
+                <Card title="Overall Pass Rate">
                   <Chart type="pie" data={quizChartData} options={pieOptions} style={{ height: '250px' }} />
                   <div className="text-center mt-3">
                     <div className="text-3xl font-bold text-primary">
                       %{quizPerformance.overallPassRate.toFixed(1)}
                     </div>
                     <div className="text-500">
-                      {quizPerformance.totalAttempts} toplam deneme
+                      {quizPerformance.totalAttempts} total attempts
                     </div>
                   </div>
                 </Card>
               </div>
               <div className="col-12 lg:col-8">
-                <Card title="Quiz Detaylari">
+                <Card title="Quiz Details">
                   <DataTable
                     value={quizPerformance.items}
                     className="p-datatable-sm"
                     paginator
                     rows={10}
-                    emptyMessage="Veri bulunamadi"
+                    emptyMessage="No data found"
                   >
                     <Column field="quizTitle" header="Quiz" sortable style={{ minWidth: '150px' }} />
-                    <Column field="courseTitle" header="Kurs" style={{ minWidth: '150px' }} />
-                    <Column field="totalAttempts" header="Deneme" sortable style={{ width: '80px' }} />
+                    <Column field="courseTitle" header="Course" style={{ minWidth: '150px' }} />
+                    <Column field="totalAttempts" header="Attempts" sortable style={{ width: '80px' }} />
                     <Column
-                      header="Basarili"
+                      header="Passed"
                       body={(row) => <Tag value={row.passedCount} severity="success" />}
                       sortable
                       sortField="passedCount"
                       style={{ width: '80px' }}
                     />
                     <Column
-                      header="Basarisiz"
+                      header="Failed"
                       body={(row) => <Tag value={row.failedCount} severity="danger" />}
                       sortable
                       sortField="failedCount"
                       style={{ width: '80px' }}
                     />
                     <Column
-                      header="Basari Orani"
+                      header="Pass Rate"
                       body={(row) => (
                         <Tag
                           value={`%${Math.round(row.passRate)}`}
@@ -643,14 +643,14 @@ export default function ReportsPage() {
                       style={{ width: '100px' }}
                     />
                     <Column
-                      header="Ort. Puan"
+                      header="Avg. Score"
                       body={(row) => `${Math.round(row.averageScore)}`}
                       sortable
                       sortField="averageScore"
                       style={{ width: '90px' }}
                     />
                     <Column
-                      header="Ort. Sure"
+                      header="Avg. Time"
                       body={(row) => {
                         const mins = Math.floor(row.averageTimeSeconds / 60);
                         const secs = row.averageTimeSeconds % 60;

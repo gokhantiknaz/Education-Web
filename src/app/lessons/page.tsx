@@ -812,7 +812,7 @@ export default function LessonsPage() {
             <InputNumber
               id="durationSeconds"
               value={lesson.durationSeconds}
-              onValueChange={(e) => setLesson({ ...lesson, durationSeconds: e.value })}
+              onValueChange={(e) => setLesson({ ...lesson, durationSeconds: e.value ?? null })}
               min={0}
               max={generalSettings?.maxVideoDuration ? generalSettings.maxVideoDuration * 60 : undefined}
               placeholder="Ornek: 600 (10 dk)"

@@ -19,7 +19,9 @@ import { OrderList } from 'primereact/orderlist';
 import { Message } from 'primereact/message';
 import { Divider } from 'primereact/divider';
 import api, { ApiResponse } from '@/lib/api';
-import { Quiz, QuizQuestion, QuizOption, Course, CreateOptionRequest } from '@/types';
+import { Quiz, QuizQuestion, QuizOption, Course, CreateOptionRequest, TestCase, CreateTestCaseRequest, ValidationResult } from '@/types';
+import { MultiSelect } from 'primereact/multiselect';
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 interface CourseOption {
   id: string;
@@ -46,6 +48,22 @@ const emptyQuestion = {
   explanation: '',
   imageUrl: '',
   options: [] as CreateOptionRequest[],
+  // CodeChallenge fields
+  starterCode: '',
+  solutionCode: '',
+  timeLimitSeconds: 5,
+  memoryLimitKb: 128000,
+  functionSignature: '',
+  allowedLanguages: ['python', 'javascript'] as string[],
+  testCases: [] as CreateTestCaseRequest[],
+};
+
+const emptyTestCase: CreateTestCaseRequest = {
+  input: '',
+  expectedOutput: '',
+  isHidden: false,
+  displayOrder: 0,
+  points: 1,
 };
 
 export default function QuizzesPage() {
@@ -72,6 +90,11 @@ export default function QuizzesPage() {
   const [questionsDialog, setQuestionsDialog] = useState(false);
   const [questionsLoading, setQuestionsLoading] = useState(false);
 
+  // CodeChallenge state
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [validationLanguage, setValidationLanguage] = useState('python');
+
   const toast = useRef<Toast>(null);
 
   const [lazyState, setLazyState] = useState({
@@ -84,6 +107,14 @@ export default function QuizzesPage() {
     { label: 'Tek Secim', value: 'SingleChoice' },
     { label: 'Coktan Secmeli', value: 'MultipleChoice' },
     { label: 'Bosluk Doldurma', value: 'FillInBlank' },
+    { label: 'Kod Yazma', value: 'CodeChallenge' },
+  ];
+
+  const supportedLanguages = [
+    { label: 'Python', value: 'python' },
+    { label: 'JavaScript', value: 'javascript' },
+    { label: 'C#', value: 'csharp' },
+    { label: 'C', value: 'c' },
   ];
 
   useEffect(() => {
@@ -286,13 +317,16 @@ export default function QuizzesPage() {
         { optionText: '', isCorrect: false, displayOrder: 2 },
         { optionText: '', isCorrect: false, displayOrder: 3 },
       ],
+      testCases: [],
     });
     setIsEditingQuestion(false);
     setEditingQuestionId(null);
+    setValidationResult(null);
     setQuestionDialog(true);
   };
 
   const editQuestion = (questionData: QuizQuestion) => {
+    const allowedLangs = questionData.allowedLanguages || ['python', 'javascript'];
     setQuestion({
       quizId: questionData.quizId,
       questionText: questionData.questionText,
@@ -307,9 +341,30 @@ export default function QuizzesPage() {
         isCorrect: o.isCorrect,
         displayOrder: o.displayOrder,
       })),
+      // CodeChallenge fields
+      starterCode: questionData.starterCode || '',
+      solutionCode: questionData.solutionCode || '',
+      timeLimitSeconds: questionData.timeLimitSeconds || 5,
+      memoryLimitKb: questionData.memoryLimitKb || 128000,
+      functionSignature: questionData.functionSignature || '',
+      allowedLanguages: allowedLangs,
+      testCases: questionData.testCases?.map(tc => ({
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+        isHidden: tc.isHidden,
+        displayOrder: tc.displayOrder,
+        points: tc.points,
+      })) || [],
     });
     setIsEditingQuestion(true);
     setEditingQuestionId(questionData.id);
+    setValidationResult(null);
+    // Auto-select validation language if only one is allowed
+    if (allowedLangs.length === 1) {
+      setValidationLanguage(allowedLangs[0]);
+    } else if (allowedLangs.length > 0 && !allowedLangs.includes(validationLanguage)) {
+      setValidationLanguage(allowedLangs[0]);
+    }
     setQuestionDialog(true);
   };
 
@@ -327,8 +382,35 @@ export default function QuizzesPage() {
       return;
     }
 
-    // Validate options
-    if (question.questionType === 'FillInBlank') {
+    // Validate based on question type
+    if (question.questionType === 'CodeChallenge') {
+      // CodeChallenge validation
+      if (!question.allowedLanguages || question.allowedLanguages.length === 0) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Uyari',
+          detail: 'En az bir programlama dili secilmeli',
+        });
+        return;
+      }
+      if (!question.testCases || question.testCases.length === 0) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Uyari',
+          detail: 'En az bir test case eklenmeli',
+        });
+        return;
+      }
+      const validTestCases = question.testCases.filter(tc => tc.input.trim() || tc.expectedOutput.trim());
+      if (validTestCases.length === 0) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Uyari',
+          detail: 'Test case icerigi bos olamaz',
+        });
+        return;
+      }
+    } else if (question.questionType === 'FillInBlank') {
       // FillInBlank: either options (drag-drop) or correctAnswer (text input) required
       const validOptions = question.options.filter(o => o.optionText.trim());
       const hasCorrectOption = validOptions.some(o => o.isCorrect);
@@ -374,26 +456,62 @@ export default function QuizzesPage() {
     }
 
     try {
-      const payload = {
-        ...question,
-        options: question.options.filter(o => o.optionText.trim()),
-      };
+      if (question.questionType === 'CodeChallenge') {
+        // Use CodeChallenge specific endpoints
+        const payload = {
+          quizId: question.quizId,
+          questionText: question.questionText,
+          points: question.points,
+          displayOrder: question.displayOrder,
+          explanation: question.explanation,
+          imageUrl: question.imageUrl,
+          starterCode: question.starterCode,
+          solutionCode: question.solutionCode,
+          timeLimitSeconds: question.timeLimitSeconds,
+          memoryLimitKb: question.memoryLimitKb,
+          functionSignature: question.functionSignature,
+          allowedLanguages: question.allowedLanguages,
+          testCases: question.testCases,
+        };
 
-      if (isEditingQuestion && editingQuestionId) {
-        await api.put(`/web/quizzes/questions/${editingQuestionId}`, payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Basarili',
-          detail: 'Soru guncellendi',
-        });
+        if (isEditingQuestion && editingQuestionId) {
+          await api.put(`/web/quizzes/questions/${editingQuestionId}/code-challenge`, payload);
+          toast.current?.show({
+            severity: 'success',
+            summary: 'Basarili',
+            detail: 'Kod sorusu guncellendi',
+          });
+        } else {
+          await api.post('/web/quizzes/questions/code-challenge', payload);
+          toast.current?.show({
+            severity: 'success',
+            summary: 'Basarili',
+            detail: 'Kod sorusu eklendi',
+          });
+        }
       } else {
-        await api.post('/web/quizzes/questions', payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Basarili',
-          detail: 'Soru eklendi',
-        });
+        const payload = {
+          ...question,
+          options: question.options.filter(o => o.optionText.trim()),
+        };
+
+        if (isEditingQuestion && editingQuestionId) {
+          await api.put(`/web/quizzes/questions/${editingQuestionId}`, payload);
+          toast.current?.show({
+            severity: 'success',
+            summary: 'Basarili',
+            detail: 'Soru guncellendi',
+          });
+        } else {
+          await api.post('/web/quizzes/questions', payload);
+          toast.current?.show({
+            severity: 'success',
+            summary: 'Basarili',
+            detail: 'Soru eklendi',
+          });
+        }
       }
+
       setQuestionDialog(false);
       // Reload quiz details
       if (currentQuiz) {
@@ -406,6 +524,82 @@ export default function QuizzesPage() {
         summary: 'Hata',
         detail: 'Islem basarisiz',
       });
+    }
+  };
+
+  // Test Case Management
+  const addTestCase = () => {
+    setQuestion({
+      ...question,
+      testCases: [...(question.testCases || []), { ...emptyTestCase, displayOrder: (question.testCases?.length || 0) }],
+    });
+  };
+
+  const removeTestCase = (index: number) => {
+    const newTestCases = question.testCases?.filter((_, i) => i !== index) || [];
+    setQuestion({ ...question, testCases: newTestCases });
+  };
+
+  const updateTestCase = (index: number, field: string, value: any) => {
+    const newTestCases = [...(question.testCases || [])];
+    newTestCases[index] = { ...newTestCases[index], [field]: value };
+    setQuestion({ ...question, testCases: newTestCases });
+  };
+
+  // Solution Validation
+  const validateSolution = async () => {
+    if (!question.solutionCode?.trim()) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Uyari',
+        detail: 'Cozum kodu girilmeli',
+      });
+      return;
+    }
+
+    if (!editingQuestionId) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Uyari',
+        detail: 'Oncelikle soruyu kaydedin',
+      });
+      return;
+    }
+
+    setValidating(true);
+    setValidationResult(null);
+
+    try {
+      const response = await api.post<ApiResponse<ValidationResult>>(
+        `/web/quizzes/questions/${editingQuestionId}/validate`,
+        {
+          solutionCode: question.solutionCode,
+          language: validationLanguage,
+        }
+      );
+      setValidationResult(response.data.data);
+
+      if (response.data.data.allPassed) {
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Basarili',
+          detail: 'Tum test caseler gecti!',
+        });
+      } else {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Uyari',
+          detail: `${response.data.data.testCasesPassed}/${response.data.data.totalTestCases} test case gecti`,
+        });
+      }
+    } catch (error: any) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Hata',
+        detail: error.response?.data?.message || 'Dogrulama basarisiz',
+      });
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -525,8 +719,15 @@ export default function QuizzesPage() {
       SingleChoice: 'Tek Secim',
       MultipleChoice: 'Coktan Secmeli',
       FillInBlank: 'Bosluk Doldurma',
+      CodeChallenge: 'Kod Yazma',
     };
-    return <Tag value={labels[questionData.questionType] || questionData.questionType} />;
+    const severities: Record<string, 'success' | 'info' | 'warning' | 'danger' | undefined> = {
+      SingleChoice: undefined,
+      MultipleChoice: 'info',
+      FillInBlank: 'warning',
+      CodeChallenge: 'success',
+    };
+    return <Tag value={labels[questionData.questionType] || questionData.questionType} severity={severities[questionData.questionType]} />;
   };
 
   const header = (
@@ -732,7 +933,7 @@ export default function QuizzesPage() {
       {/* Question Dialog */}
       <Dialog
         visible={questionDialog}
-        style={{ width: '700px' }}
+        style={{ width: question.questionType === 'CodeChallenge' ? '900px' : '700px' }}
         header={isEditingQuestion ? 'Soru Duzenle' : 'Yeni Soru'}
         modal
         footer={questionDialogFooter}
@@ -761,7 +962,206 @@ export default function QuizzesPage() {
             />
           </div>
 
-          {question.questionType === 'FillInBlank' ? (
+          {/* CodeChallenge specific fields */}
+          {question.questionType === 'CodeChallenge' && (
+            <div className="mb-4">
+              <Message
+                severity="info"
+                className="mb-3 w-full"
+                content={
+                  <div className="flex flex-column gap-1">
+                    <span className="font-bold">Kod Yazma Sorusu</span>
+                    <span>Ogrenciler kod yazacak ve Judge0 ile otomatik degerlendirilecek.</span>
+                  </div>
+                }
+              />
+
+              <div className="field mb-4">
+                <label className="font-bold">Izin Verilen Diller *</label>
+                <MultiSelect
+                  value={question.allowedLanguages}
+                  options={supportedLanguages}
+                  onChange={(e) => setQuestion({ ...question, allowedLanguages: e.value })}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Dil secin"
+                  display="chip"
+                  className="w-full"
+                />
+              </div>
+
+              <div className="field mb-4">
+                <label htmlFor="functionSignature" className="font-bold">Fonksiyon Imzasi (Opsiyonel)</label>
+                <InputText
+                  id="functionSignature"
+                  value={question.functionSignature}
+                  onChange={(e) => setQuestion({ ...question, functionSignature: e.target.value })}
+                  placeholder="Ornek: def sum(a: int, b: int) -> int"
+                />
+              </div>
+
+              <div className="formgrid grid mb-4">
+                <div className="field col-6">
+                  <label htmlFor="timeLimitSeconds" className="font-bold">Sure Limiti (sn)</label>
+                  <InputNumber
+                    id="timeLimitSeconds"
+                    value={question.timeLimitSeconds}
+                    onValueChange={(e) => setQuestion({ ...question, timeLimitSeconds: e.value || 5 })}
+                    min={1}
+                    max={30}
+                  />
+                </div>
+                <div className="field col-6">
+                  <label htmlFor="memoryLimitKb" className="font-bold">Bellek Limiti (KB)</label>
+                  <InputNumber
+                    id="memoryLimitKb"
+                    value={question.memoryLimitKb}
+                    onValueChange={(e) => setQuestion({ ...question, memoryLimitKb: e.value || 128000 })}
+                    min={16000}
+                    max={512000}
+                  />
+                </div>
+              </div>
+
+              <div className="field mb-4">
+                <label htmlFor="starterCode" className="font-bold">Baslangic Kodu (Opsiyonel)</label>
+                <InputTextarea
+                  id="starterCode"
+                  value={question.starterCode}
+                  onChange={(e) => setQuestion({ ...question, starterCode: e.target.value })}
+                  rows={4}
+                  placeholder="Ogrenciye gosterilecek baslangic kodu..."
+                  style={{ fontFamily: 'monospace' }}
+                />
+              </div>
+
+              <div className="field mb-4">
+                <label htmlFor="solutionCode" className="font-bold">Cozum Kodu (Admin Referans)</label>
+                <InputTextarea
+                  id="solutionCode"
+                  value={question.solutionCode}
+                  onChange={(e) => setQuestion({ ...question, solutionCode: e.target.value })}
+                  rows={6}
+                  placeholder="Dogru cozum kodu..."
+                  style={{ fontFamily: 'monospace' }}
+                />
+                {isEditingQuestion && editingQuestionId && (
+                  <div className="flex align-items-center gap-2 mt-2">
+                    <Dropdown
+                      value={validationLanguage}
+                      options={question.allowedLanguages?.map(l => ({ label: supportedLanguages.find(sl => sl.value === l)?.label || l, value: l })) || []}
+                      onChange={(e) => setValidationLanguage(e.value)}
+                      placeholder="Dil sec"
+                      className="w-8rem"
+                    />
+                    <Button
+                      label={validating ? 'Dogruluyor...' : 'Cozumu Dogrula'}
+                      icon={validating ? 'pi pi-spin pi-spinner' : 'pi pi-play'}
+                      onClick={validateSolution}
+                      disabled={validating || !question.solutionCode?.trim()}
+                      className="p-button-sm"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Validation Results */}
+              {validationResult && (
+                <div className={`p-3 border-round mb-4 ${validationResult.allPassed ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                  <div className="flex align-items-center gap-2 mb-2">
+                    <i className={`pi ${validationResult.allPassed ? 'pi-check-circle text-green-600' : 'pi-exclamation-circle text-yellow-600'}`}></i>
+                    <span className="font-bold">
+                      {validationResult.testCasesPassed}/{validationResult.totalTestCases} Test Case Gecti
+                    </span>
+                    {validationResult.totalExecutionTimeMs && (
+                      <span className="text-color-secondary">({validationResult.totalExecutionTimeMs.toFixed(2)} ms)</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {validationResult.testResults.map((tr, idx) => (
+                      <Tag
+                        key={idx}
+                        value={`#${tr.testCaseNumber}: ${tr.passed ? 'Gecti' : tr.status}`}
+                        severity={tr.passed ? 'success' : 'danger'}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Divider />
+
+              {/* Test Cases */}
+              <div className="field mb-4">
+                <div className="flex justify-content-between align-items-center mb-3">
+                  <label className="font-bold">Test Caseler *</label>
+                  <Button
+                    label="Test Case Ekle"
+                    icon="pi pi-plus"
+                    className="p-button-sm p-button-outlined"
+                    onClick={addTestCase}
+                  />
+                </div>
+
+                {(!question.testCases || question.testCases.length === 0) && (
+                  <Message severity="warn" text="En az bir test case eklenmeli" className="w-full mb-3" />
+                )}
+
+                {question.testCases?.map((tc, index) => (
+                  <div key={index} className="surface-100 border-round p-3 mb-3">
+                    <div className="flex justify-content-between align-items-center mb-2">
+                      <span className="font-bold">Test Case #{index + 1}</span>
+                      <div className="flex align-items-center gap-2">
+                        <Checkbox
+                          inputId={`hidden-${index}`}
+                          checked={tc.isHidden || false}
+                          onChange={(e) => updateTestCase(index, 'isHidden', e.checked)}
+                        />
+                        <label htmlFor={`hidden-${index}`} className="text-sm">Gizli</label>
+                        <InputNumber
+                          value={tc.points}
+                          onValueChange={(e) => updateTestCase(index, 'points', e.value || 1)}
+                          min={1}
+                          suffix=" puan"
+                          className="w-6rem"
+                          inputStyle={{ width: '100%' }}
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          className="p-button-rounded p-button-text p-button-danger p-button-sm"
+                          onClick={() => removeTestCase(index)}
+                        />
+                      </div>
+                    </div>
+                    <div className="formgrid grid">
+                      <div className="field col-6">
+                        <label className="text-sm font-medium">Girdi (Input)</label>
+                        <InputTextarea
+                          value={tc.input}
+                          onChange={(e) => updateTestCase(index, 'input', e.target.value)}
+                          rows={2}
+                          style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+                          placeholder="Ornek: 5\n3"
+                        />
+                      </div>
+                      <div className="field col-6">
+                        <label className="text-sm font-medium">Beklenen Cikti</label>
+                        <InputTextarea
+                          value={tc.expectedOutput}
+                          onChange={(e) => updateTestCase(index, 'expectedOutput', e.target.value)}
+                          rows={2}
+                          style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+                          placeholder="Ornek: 8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {question.questionType === 'FillInBlank' && (
             <div className="mb-4">
               <Message
                 severity="info"
@@ -831,7 +1231,9 @@ export default function QuizzesPage() {
                 <small className="text-color-secondary">Secenek yoksa veya metin girisi isteniyorsa kullanilir</small>
               </div>
             </div>
-          ) : (
+          )}
+
+          {(question.questionType === 'SingleChoice' || question.questionType === 'MultipleChoice') && (
             <div className="field mb-4">
               <label className="font-bold mb-2 block">Secenekler *</label>
               <small className="text-color-secondary block mb-3">

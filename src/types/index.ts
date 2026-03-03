@@ -216,7 +216,7 @@ export interface QuizQuestion {
   id: string;
   quizId: string;
   questionText: string;
-  questionType: 'SingleChoice' | 'MultipleChoice' | 'FillInBlank';
+  questionType: 'SingleChoice' | 'MultipleChoice' | 'FillInBlank' | 'CodeChallenge';
   points: number;
   displayOrder: number;
   correctAnswer?: string;
@@ -225,6 +225,25 @@ export interface QuizQuestion {
   createdAt: string;
   updatedAt: string;
   options: QuizOption[];
+  // CodeChallenge fields
+  starterCode?: string;
+  solutionCode?: string;
+  timeLimitSeconds?: number;
+  memoryLimitKb?: number;
+  functionSignature?: string;
+  allowedLanguages?: string[];
+  testCases?: TestCase[];
+}
+
+export interface TestCase {
+  id: string;
+  questionId: string;
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+  displayOrder: number;
+  points: number;
+  createdAt?: string;
 }
 
 export interface QuizOption {
@@ -585,4 +604,89 @@ export interface NotificationStats {
   pendingScheduled: number;
   totalBatches: number;
   failedBatches: number;
+}
+
+// Code Challenge types
+export interface CreateTestCaseRequest {
+  input: string;
+  expectedOutput: string;
+  isHidden?: boolean;
+  displayOrder?: number;
+  points?: number;
+}
+
+export interface UpdateTestCaseRequest {
+  input: string;
+  expectedOutput: string;
+  isHidden?: boolean;
+  displayOrder?: number;
+  points?: number;
+}
+
+export interface CreateCodeChallengeQuestionRequest {
+  quizId: string;
+  questionText: string;
+  points?: number;
+  displayOrder?: number;
+  explanation?: string;
+  imageUrl?: string;
+  starterCode?: string;
+  solutionCode?: string;
+  timeLimitSeconds?: number;
+  memoryLimitKb?: number;
+  functionSignature?: string;
+  allowedLanguages: string[];
+  testCases?: CreateTestCaseRequest[];
+}
+
+export interface UpdateCodeChallengeQuestionRequest {
+  questionText: string;
+  points?: number;
+  displayOrder?: number;
+  explanation?: string;
+  imageUrl?: string;
+  starterCode?: string;
+  solutionCode?: string;
+  timeLimitSeconds?: number;
+  memoryLimitKb?: number;
+  functionSignature?: string;
+  allowedLanguages: string[];
+}
+
+export interface ValidateSolutionRequest {
+  solutionCode: string;
+  language: string;
+}
+
+export interface TestCaseResult {
+  testCaseNumber: number;
+  passed: boolean;
+  input?: string;
+  expectedOutput?: string;
+  actualOutput?: string;
+  status?: string;
+  executionTimeMs?: number;
+  memoryUsedKb?: number;
+  isHidden: boolean;
+}
+
+export interface ValidationResult {
+  allPassed: boolean;
+  testCasesPassed: number;
+  totalTestCases: number;
+  totalExecutionTimeMs?: number;
+  testResults: TestCaseResult[];
+}
+
+export interface Judge0Status {
+  isAvailable: boolean;
+  version?: string;
+  message?: string;
+  supportedLanguages: SupportedLanguage[];
+}
+
+export interface SupportedLanguage {
+  id: number;
+  name: string;
+  key: string;
 }

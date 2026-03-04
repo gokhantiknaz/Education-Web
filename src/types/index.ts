@@ -324,6 +324,7 @@ export interface Lesson {
   isPublished: boolean;
   videoUrl?: string;
   videoId?: string;
+  isPublicUrl: boolean;
   // Document fields
   documentUrl?: string;
   documentName?: string;
@@ -523,6 +524,39 @@ export interface GeneralSettings {
   maxVideoDuration?: number | null;
   maxDocumentSize?: number | null;
   maxDescriptionLength?: number | null;
+}
+
+// CloudFront Settings
+export interface CloudFrontSettings {
+  isEnabled: boolean;
+  domain?: string;
+  keyPairId?: string;
+  hasPrivateKey: boolean;
+  urlExpirationMinutes: number;
+}
+
+export interface CloudFrontTestResult {
+  success: boolean;
+  message?: string;
+  testSignedUrl?: string;
+}
+
+// Email Settings
+export interface EmailSettings {
+  isEnabled: boolean;
+  smtpHost?: string;
+  smtpPort: number;
+  smtpUsername?: string;
+  hasPassword: boolean;
+  fromAddress?: string;
+  fromName?: string;
+  useSsl: boolean;
+  appUrl?: string;
+}
+
+export interface EmailTestResult {
+  success: boolean;
+  message?: string;
 }
 
 // Notification types

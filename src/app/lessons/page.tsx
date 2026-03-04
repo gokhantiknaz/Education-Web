@@ -37,6 +37,7 @@ const emptyLesson = {
   description: '',
   videoUrl: '',
   durationSeconds: null as number | null,
+  isPublicUrl: false, // true: direct URL, false: CloudFront signed URL
   // Document fields
   documentUrl: '',
   documentName: '',
@@ -203,6 +204,7 @@ export default function LessonsPage() {
       description: lessonData.description || '',
       videoUrl: lessonData.videoUrl || '',
       durationSeconds: lessonData.durationSeconds ?? null,
+      isPublicUrl: lessonData.isPublicUrl || false,
       documentUrl: lessonData.documentUrl || '',
       documentName: lessonData.documentName || '',
       documentType: lessonData.documentType || '',
@@ -238,6 +240,7 @@ export default function LessonsPage() {
         description: lesson.description || null,
         videoUrl: lesson.videoUrl || null,
         durationSeconds: lesson.durationSeconds,
+        isPublicUrl: lesson.isPublicUrl,
         documentUrl: lesson.documentUrl || null,
         documentName: lesson.documentName || null,
         documentType: lesson.documentType || null,
@@ -691,6 +694,24 @@ export default function LessonsPage() {
             />
             <small className="text-500">Video dosyasi URL'si (opsiyonel)</small>
           </div>
+
+          {lesson.videoUrl && (
+            <div className="field mb-4">
+              <div className="field-checkbox">
+                <Checkbox
+                  inputId="isPublicUrl"
+                  checked={lesson.isPublicUrl}
+                  onChange={(e) => setLesson({ ...lesson, isPublicUrl: e.checked || false })}
+                />
+                <label htmlFor="isPublicUrl" className="ml-2 font-bold">Public URL (CDN Token Gerektirmez)</label>
+              </div>
+              <small className="text-500 block mt-1">
+                {lesson.isPublicUrl
+                  ? 'Video URL direkt kullanilacak (YouTube, Vimeo, vb. harici linkler icin)'
+                  : 'CloudFront uzerinden imzali URL olusturulacak (S3/CDN videolari icin guvenli erisim)'}
+              </small>
+            </div>
+          )}
 
           <div className="surface-100 border-round p-3 mb-4">
             <h6 className="mt-0 mb-3 flex align-items-center gap-2">

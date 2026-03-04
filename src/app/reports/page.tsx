@@ -115,6 +115,46 @@ interface Course {
   title: string;
 }
 
+interface FavoriteLessonsReport {
+  totalFavorites: number;
+  totalUsersWithFavorites: number;
+  totalFavoritedLessons: number;
+  averageFavoritesPerUser: number;
+  mostFavoritedLessons: MostFavoritedLesson[];
+  mostFavoritedCourses: MostFavoritedCourse[];
+  favoritesByDate: { date: string; count: number }[];
+  recentFavorites: RecentFavorite[];
+}
+
+interface MostFavoritedLesson {
+  lessonId: string;
+  lessonTitle: string;
+  sectionTitle: string;
+  courseId: string;
+  courseTitle: string;
+  courseThumbnailUrl?: string;
+  favoriteCount: number;
+  contentType: string;
+  durationSeconds?: number;
+}
+
+interface MostFavoritedCourse {
+  courseId: string;
+  courseTitle: string;
+  thumbnailUrl?: string;
+  totalFavorites: number;
+  favoritedLessonsCount: number;
+}
+
+interface RecentFavorite {
+  id: string;
+  userName: string;
+  userEmail: string;
+  lessonTitle: string;
+  courseTitle: string;
+  favoritedAt: string;
+}
+
 export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<Date[]>([
@@ -130,12 +170,14 @@ export default function ReportsPage() {
   const [coursePerformance, setCoursePerformance] = useState<CoursePerformance | null>(null);
   const [userActivity, setUserActivity] = useState<UserActivity | null>(null);
   const [quizPerformance, setQuizPerformance] = useState<QuizPerformance | null>(null);
+  const [favoriteLessons, setFavoriteLessons] = useState<FavoriteLessonsReport | null>(null);
 
   // Charts
   const [enrollmentChartData, setEnrollmentChartData] = useState({});
   const [statusChartData, setStatusChartData] = useState({});
   const [activityChartData, setActivityChartData] = useState({});
   const [quizChartData, setQuizChartData] = useState({});
+  const [favoritesChartData, setFavoritesChartData] = useState({});
 
   const toast = useRef<Toast>(null);
 
@@ -164,12 +206,13 @@ export default function ReportsPage() {
     const endDate = dateRange[1].toISOString();
 
     try {
-      const [summaryRes, enrollmentRes, courseRes, activityRes, quizRes] = await Promise.all([
+      const [summaryRes, enrollmentRes, courseRes, activityRes, quizRes, favoritesRes] = await Promise.all([
         api.get<ApiResponse<ReportSummary>>(`/web/analytics/reports/summary?startDate=${startDate}&endDate=${endDate}`),
         api.get<ApiResponse<EnrollmentReport>>(`/web/analytics/reports/enrollments?startDate=${startDate}&endDate=${endDate}${selectedCourse ? `&courseId=${selectedCourse}` : ''}`),
         api.get<ApiResponse<CoursePerformance>>(`/web/analytics/reports/course-performance?startDate=${startDate}&endDate=${endDate}`),
         api.get<ApiResponse<UserActivity>>(`/web/analytics/reports/user-activity?startDate=${startDate}&endDate=${endDate}`),
-        api.get<ApiResponse<QuizPerformance>>(`/web/analytics/reports/quiz-performance?startDate=${startDate}&endDate=${endDate}${selectedCourse ? `&courseId=${selectedCourse}` : ''}`)
+        api.get<ApiResponse<QuizPerformance>>(`/web/analytics/reports/quiz-performance?startDate=${startDate}&endDate=${endDate}${selectedCourse ? `&courseId=${selectedCourse}` : ''}`),
+        api.get<ApiResponse<FavoriteLessonsReport>>(`/web/analytics/reports/favorite-lessons?startDate=${startDate}&endDate=${endDate}`)
       ]);
 
       setSummary(summaryRes.data.data);
@@ -177,9 +220,10 @@ export default function ReportsPage() {
       setCoursePerformance(courseRes.data.data);
       setUserActivity(activityRes.data.data);
       setQuizPerformance(quizRes.data.data);
+      setFavoriteLessons(favoritesRes.data.data);
 
       // Initialize charts
-      initCharts(enrollmentRes.data.data, activityRes.data.data, quizRes.data.data);
+      initCharts(enrollmentRes.data.data, activityRes.data.data, quizRes.data.data, favoritesRes.data.data);
     } catch (error) {
       console.error('Reports load error:', error);
       toast.current?.show({
@@ -192,7 +236,7 @@ export default function ReportsPage() {
     }
   };
 
-  const initCharts = (enrollment: EnrollmentReport, activity: UserActivity, quiz: QuizPerformance) => {
+  const initCharts = (enrollment: EnrollmentReport, activity: UserActivity, quiz: QuizPerformance, favorites?: FavoriteLessonsReport) => {
     // Enrollment trend
     setEnrollmentChartData({
       labels: enrollment.byDate.map(d => new Date(d.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })),
@@ -254,6 +298,23 @@ export default function ReportsPage() {
         borderWidth: 0
       }]
     });
+
+    // Favorites trend
+    if (favorites) {
+      setFavoritesChartData({
+        labels: favorites.favoritesByDate.map(d => new Date(d.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })),
+        datasets: [
+          {
+            label: 'New Favorites',
+            data: favorites.favoritesByDate.map(d => d.count),
+            borderColor: '#ec4899',
+            backgroundColor: 'rgba(236, 72, 153, 0.1)',
+            fill: true,
+            tension: 0.4
+          }
+        ]
+      });
+    }
   };
 
   const formatCurrency = (value: number) =>
@@ -659,6 +720,135 @@ export default function ReportsPage() {
                       sortable
                       sortField="averageTimeSeconds"
                       style={{ width: '90px' }}
+                    />
+                  </DataTable>
+                </Card>
+              </div>
+            </div>
+          )}
+        </TabPanel>
+
+        {/* Favorite Lessons */}
+        <TabPanel header="Favorite Lessons" leftIcon="pi pi-heart mr-2">
+          {favoriteLessons && (
+            <div className="grid">
+              {/* Summary Cards */}
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Total Favorites</div>
+                  <div className="text-3xl font-bold text-pink-500">{favoriteLessons.totalFavorites}</div>
+                </div>
+              </div>
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Users with Favorites</div>
+                  <div className="text-3xl font-bold text-primary">{favoriteLessons.totalUsersWithFavorites}</div>
+                </div>
+              </div>
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Favorited Lessons</div>
+                  <div className="text-3xl font-bold text-purple-500">{favoriteLessons.totalFavoritedLessons}</div>
+                </div>
+              </div>
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Avg. per User</div>
+                  <div className="text-3xl font-bold text-orange-500">{favoriteLessons.averageFavoritesPerUser.toFixed(1)}</div>
+                </div>
+              </div>
+
+              {/* Favorites Trend Chart */}
+              <div className="col-12 lg:col-8">
+                <Card title="Favorites Trend">
+                  <Chart type="line" data={favoritesChartData} options={chartOptions} style={{ height: '300px' }} />
+                </Card>
+              </div>
+
+              {/* Most Favorited Courses */}
+              <div className="col-12 lg:col-4">
+                <Card title="Most Favorited Courses">
+                  <div className="flex flex-column gap-3">
+                    {favoriteLessons.mostFavoritedCourses.slice(0, 5).map((course, index) => (
+                      <div key={course.courseId} className="flex align-items-center gap-3 p-2 surface-hover border-round">
+                        <div className="flex align-items-center justify-content-center bg-pink-100 text-pink-600 border-round" style={{ width: '32px', height: '32px' }}>
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm">{course.courseTitle}</div>
+                          <div className="text-xs text-500">{course.favoritedLessonsCount} lessons</div>
+                        </div>
+                        <div className="flex align-items-center gap-1">
+                          <i className="pi pi-heart-fill text-pink-500" />
+                          <span className="font-bold">{course.totalFavorites}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Most Favorited Lessons */}
+              <div className="col-12 lg:col-6">
+                <Card title="Most Favorited Lessons">
+                  <DataTable
+                    value={favoriteLessons.mostFavoritedLessons}
+                    className="p-datatable-sm"
+                    scrollable
+                    scrollHeight="350px"
+                    emptyMessage="No data found"
+                  >
+                    <Column
+                      header="#"
+                      body={(_, options) => options.rowIndex + 1}
+                      style={{ width: '50px' }}
+                    />
+                    <Column field="lessonTitle" header="Lesson" style={{ minWidth: '150px' }} />
+                    <Column field="courseTitle" header="Course" style={{ minWidth: '120px' }} />
+                    <Column
+                      header="Type"
+                      body={(row) => (
+                        <Tag
+                          value={row.contentType}
+                          severity={row.contentType === 'Video' ? 'info' : row.contentType === 'Document' ? 'warning' : 'success'}
+                          icon={row.contentType === 'Video' ? 'pi pi-video' : 'pi pi-file'}
+                        />
+                      )}
+                      style={{ width: '100px' }}
+                    />
+                    <Column
+                      header="Favorites"
+                      body={(row) => (
+                        <span className="flex align-items-center gap-1">
+                          <i className="pi pi-heart-fill text-pink-500" />
+                          <span className="font-bold">{row.favoriteCount}</span>
+                        </span>
+                      )}
+                      sortable
+                      sortField="favoriteCount"
+                      style={{ width: '100px' }}
+                    />
+                  </DataTable>
+                </Card>
+              </div>
+
+              {/* Recent Favorites */}
+              <div className="col-12 lg:col-6">
+                <Card title="Recent Favorites">
+                  <DataTable
+                    value={favoriteLessons.recentFavorites}
+                    className="p-datatable-sm"
+                    scrollable
+                    scrollHeight="350px"
+                    emptyMessage="No data found"
+                  >
+                    <Column field="userName" header="User" style={{ minWidth: '120px' }} />
+                    <Column field="lessonTitle" header="Lesson" style={{ minWidth: '150px' }} />
+                    <Column field="courseTitle" header="Course" style={{ minWidth: '120px' }} />
+                    <Column
+                      header="Date"
+                      body={(row) => formatDate(row.favoritedAt)}
+                      style={{ width: '120px' }}
                     />
                   </DataTable>
                 </Card>

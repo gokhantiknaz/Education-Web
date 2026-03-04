@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
@@ -82,7 +83,7 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="field mb-4">
+          <div className="field mb-3">
             <label htmlFor="password" className="block mb-2 font-medium">
               Password
             </label>
@@ -97,6 +98,12 @@ export default function LoginPage() {
               feedback={false}
               required
             />
+          </div>
+
+          <div className="flex justify-content-end mb-4">
+            <Link href="/forgot-password" className="text-primary text-sm no-underline hover:underline">
+              Sifremi Unuttum
+            </Link>
           </div>
 
           <Button

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from 'primereact/button';
 import { Menu } from 'primereact/menu';
@@ -9,28 +10,29 @@ import { MenuItem } from 'primereact/menuitem';
 
 export default function Topbar() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const menuRef = useRef<Menu>(null);
 
   const userMenuItems: MenuItem[] = [
     {
-      label: 'Profile',
+      label: 'Profilim',
       icon: 'pi pi-user',
       command: () => {
-        // Navigate to profile
+        router.push('/profile');
       },
     },
     {
-      label: 'Settings',
+      label: 'Ayarlar',
       icon: 'pi pi-cog',
       command: () => {
-        // Navigate to settings
+        router.push('/settings');
       },
     },
     {
       separator: true,
     },
     {
-      label: 'Logout',
+      label: 'Cikis Yap',
       icon: 'pi pi-sign-out',
       command: () => {
         logout();

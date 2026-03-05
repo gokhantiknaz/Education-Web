@@ -155,6 +155,53 @@ interface RecentFavorite {
   favoritedAt: string;
 }
 
+interface UserApplicationsReport {
+  totalUserAppConnections: number;
+  totalUniqueUsers: number;
+  totalAppsUsed: number;
+  averageAppsPerUser: number;
+  appUsageStats: AppUsageStats[];
+  recentActivity: UserAppActivity[];
+  userGrowthByDate: AppUserGrowth[];
+}
+
+interface AppUsageStats {
+  applicationId: string;
+  appId: string;
+  appName: string;
+  logoUrl?: string;
+  totalUsers: number;
+  registeredViaApp: number;
+  totalLogins: number;
+  activeUsersLast7Days: number;
+  activeUsersLast30Days: number;
+  averageLoginsPerUser: number;
+}
+
+interface UserAppActivity {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  applicationId: string;
+  appName: string;
+  appId: string;
+  firstLoginAt: string;
+  lastLoginAt: string;
+  loginCount: number;
+  registeredViaThisApp: boolean;
+  deviceModel?: string;
+  deviceOS?: string;
+  appVersion?: string;
+}
+
+interface AppUserGrowth {
+  date: string;
+  newUsers: number;
+  newRegistrations: number;
+  totalLogins: number;
+}
+
 export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<Date[]>([
@@ -171,6 +218,7 @@ export default function ReportsPage() {
   const [userActivity, setUserActivity] = useState<UserActivity | null>(null);
   const [quizPerformance, setQuizPerformance] = useState<QuizPerformance | null>(null);
   const [favoriteLessons, setFavoriteLessons] = useState<FavoriteLessonsReport | null>(null);
+  const [userApplications, setUserApplications] = useState<UserApplicationsReport | null>(null);
 
   // Charts
   const [enrollmentChartData, setEnrollmentChartData] = useState({});
@@ -178,6 +226,7 @@ export default function ReportsPage() {
   const [activityChartData, setActivityChartData] = useState({});
   const [quizChartData, setQuizChartData] = useState({});
   const [favoritesChartData, setFavoritesChartData] = useState({});
+  const [userAppsChartData, setUserAppsChartData] = useState({});
 
   const toast = useRef<Toast>(null);
 
@@ -206,13 +255,14 @@ export default function ReportsPage() {
     const endDate = dateRange[1].toISOString();
 
     try {
-      const [summaryRes, enrollmentRes, courseRes, activityRes, quizRes, favoritesRes] = await Promise.all([
+      const [summaryRes, enrollmentRes, courseRes, activityRes, quizRes, favoritesRes, userAppsRes] = await Promise.all([
         api.get<ApiResponse<ReportSummary>>(`/web/analytics/reports/summary?startDate=${startDate}&endDate=${endDate}`),
         api.get<ApiResponse<EnrollmentReport>>(`/web/analytics/reports/enrollments?startDate=${startDate}&endDate=${endDate}${selectedCourse ? `&courseId=${selectedCourse}` : ''}`),
         api.get<ApiResponse<CoursePerformance>>(`/web/analytics/reports/course-performance?startDate=${startDate}&endDate=${endDate}`),
         api.get<ApiResponse<UserActivity>>(`/web/analytics/reports/user-activity?startDate=${startDate}&endDate=${endDate}`),
         api.get<ApiResponse<QuizPerformance>>(`/web/analytics/reports/quiz-performance?startDate=${startDate}&endDate=${endDate}${selectedCourse ? `&courseId=${selectedCourse}` : ''}`),
-        api.get<ApiResponse<FavoriteLessonsReport>>(`/web/analytics/reports/favorite-lessons?startDate=${startDate}&endDate=${endDate}`)
+        api.get<ApiResponse<FavoriteLessonsReport>>(`/web/analytics/reports/favorite-lessons?startDate=${startDate}&endDate=${endDate}`),
+        api.get<ApiResponse<UserApplicationsReport>>(`/web/analytics/reports/user-applications?startDate=${startDate}&endDate=${endDate}`)
       ]);
 
       setSummary(summaryRes.data.data);
@@ -221,9 +271,10 @@ export default function ReportsPage() {
       setUserActivity(activityRes.data.data);
       setQuizPerformance(quizRes.data.data);
       setFavoriteLessons(favoritesRes.data.data);
+      setUserApplications(userAppsRes.data.data);
 
       // Initialize charts
-      initCharts(enrollmentRes.data.data, activityRes.data.data, quizRes.data.data, favoritesRes.data.data);
+      initCharts(enrollmentRes.data.data, activityRes.data.data, quizRes.data.data, favoritesRes.data.data, userAppsRes.data.data);
     } catch (error) {
       console.error('Reports load error:', error);
       toast.current?.show({
@@ -236,7 +287,7 @@ export default function ReportsPage() {
     }
   };
 
-  const initCharts = (enrollment: EnrollmentReport, activity: UserActivity, quiz: QuizPerformance, favorites?: FavoriteLessonsReport) => {
+  const initCharts = (enrollment: EnrollmentReport, activity: UserActivity, quiz: QuizPerformance, favorites?: FavoriteLessonsReport, userApps?: UserApplicationsReport) => {
     // Enrollment trend
     setEnrollmentChartData({
       labels: enrollment.byDate.map(d => new Date(d.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })),
@@ -309,6 +360,31 @@ export default function ReportsPage() {
             data: favorites.favoritesByDate.map(d => d.count),
             borderColor: '#ec4899',
             backgroundColor: 'rgba(236, 72, 153, 0.1)',
+            fill: true,
+            tension: 0.4
+          }
+        ]
+      });
+    }
+
+    // User Apps growth trend
+    if (userApps) {
+      setUserAppsChartData({
+        labels: userApps.userGrowthByDate.map(d => new Date(d.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })),
+        datasets: [
+          {
+            label: 'New App Users',
+            data: userApps.userGrowthByDate.map(d => d.newUsers),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4
+          },
+          {
+            label: 'New Registrations',
+            data: userApps.userGrowthByDate.map(d => d.newRegistrations),
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
             fill: true,
             tension: 0.4
           }
@@ -850,6 +926,161 @@ export default function ReportsPage() {
                       body={(row) => formatDate(row.favoritedAt)}
                       style={{ width: '120px' }}
                     />
+                  </DataTable>
+                </Card>
+              </div>
+            </div>
+          )}
+        </TabPanel>
+
+        {/* User Applications */}
+        <TabPanel header="User Apps" leftIcon="pi pi-mobile mr-2">
+          {userApplications && (
+            <div className="grid">
+              {/* Summary Cards */}
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Total User-App Connections</div>
+                  <div className="text-3xl font-bold text-blue-500">{userApplications.totalUserAppConnections}</div>
+                </div>
+              </div>
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Unique Users</div>
+                  <div className="text-3xl font-bold text-primary">{userApplications.totalUniqueUsers}</div>
+                </div>
+              </div>
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Active Apps</div>
+                  <div className="text-3xl font-bold text-purple-500">{userApplications.totalAppsUsed}</div>
+                </div>
+              </div>
+              <div className="col-12 md:col-6 lg:col-3">
+                <div className="surface-card shadow-1 border-round p-3 text-center">
+                  <div className="text-500 text-sm mb-1">Avg. Apps per User</div>
+                  <div className="text-3xl font-bold text-orange-500">{userApplications.averageAppsPerUser.toFixed(1)}</div>
+                </div>
+              </div>
+
+              {/* User Growth Trend Chart */}
+              <div className="col-12 lg:col-8">
+                <Card title="User Growth Trend">
+                  <Chart type="line" data={userAppsChartData} options={chartOptions} style={{ height: '300px' }} />
+                </Card>
+              </div>
+
+              {/* App Usage Stats */}
+              <div className="col-12 lg:col-4">
+                <Card title="App Usage Stats">
+                  <div className="flex flex-column gap-3">
+                    {userApplications.appUsageStats.slice(0, 5).map((app, index) => (
+                      <div key={app.applicationId} className="flex align-items-center gap-3 p-2 surface-hover border-round">
+                        <div className="flex align-items-center justify-content-center bg-blue-100 text-blue-600 border-round" style={{ width: '32px', height: '32px' }}>
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm">{app.appName}</div>
+                          <div className="text-xs text-500">{app.appId}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-blue-500">{app.totalUsers}</div>
+                          <div className="text-xs text-500">users</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+
+              {/* App Stats Table */}
+              <div className="col-12">
+                <Card title="Application Statistics">
+                  <DataTable
+                    value={userApplications.appUsageStats}
+                    className="p-datatable-sm"
+                    paginator
+                    rows={10}
+                    emptyMessage="No data found"
+                  >
+                    <Column field="appName" header="App Name" sortable style={{ minWidth: '150px' }} />
+                    <Column field="appId" header="App ID" style={{ minWidth: '150px' }} />
+                    <Column field="totalUsers" header="Total Users" sortable style={{ width: '100px' }} />
+                    <Column
+                      header="Registered Via"
+                      body={(row) => (
+                        <Tag value={row.registeredViaApp} severity="success" />
+                      )}
+                      sortable
+                      sortField="registeredViaApp"
+                      style={{ width: '120px' }}
+                    />
+                    <Column field="totalLogins" header="Total Logins" sortable style={{ width: '100px' }} />
+                    <Column
+                      header="Active (7d)"
+                      body={(row) => (
+                        <Tag value={row.activeUsersLast7Days} severity={row.activeUsersLast7Days > 0 ? 'info' : 'warning'} />
+                      )}
+                      sortable
+                      sortField="activeUsersLast7Days"
+                      style={{ width: '100px' }}
+                    />
+                    <Column
+                      header="Active (30d)"
+                      body={(row) => (
+                        <Tag value={row.activeUsersLast30Days} severity={row.activeUsersLast30Days > 0 ? 'info' : 'warning'} />
+                      )}
+                      sortable
+                      sortField="activeUsersLast30Days"
+                      style={{ width: '100px' }}
+                    />
+                    <Column
+                      header="Avg. Logins"
+                      body={(row) => row.averageLoginsPerUser.toFixed(1)}
+                      sortable
+                      sortField="averageLoginsPerUser"
+                      style={{ width: '100px' }}
+                    />
+                  </DataTable>
+                </Card>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="col-12">
+                <Card title="Recent User App Activity">
+                  <DataTable
+                    value={userApplications.recentActivity}
+                    className="p-datatable-sm"
+                    paginator
+                    rows={10}
+                    emptyMessage="No data found"
+                  >
+                    <Column field="userName" header="User" style={{ minWidth: '120px' }} />
+                    <Column field="userEmail" header="Email" style={{ minWidth: '180px' }} />
+                    <Column field="appName" header="App" style={{ minWidth: '120px' }} />
+                    <Column
+                      header="Registered Via"
+                      body={(row) => (
+                        row.registeredViaThisApp ?
+                          <Tag value="Yes" severity="success" icon="pi pi-check" /> :
+                          <Tag value="No" severity="secondary" />
+                      )}
+                      style={{ width: '120px' }}
+                    />
+                    <Column
+                      header="First Login"
+                      body={(row) => formatDate(row.firstLoginAt)}
+                      style={{ width: '120px' }}
+                    />
+                    <Column
+                      header="Last Login"
+                      body={(row) => formatDate(row.lastLoginAt)}
+                      style={{ width: '120px' }}
+                    />
+                    <Column field="loginCount" header="Logins" style={{ width: '80px' }} />
+                    <Column field="deviceModel" header="Device" style={{ width: '120px' }} />
+                    <Column field="deviceOS" header="OS" style={{ width: '100px' }} />
+                    <Column field="appVersion" header="Version" style={{ width: '100px' }} />
                   </DataTable>
                 </Card>
               </div>
